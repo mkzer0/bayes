@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bayesian Product Discovery</title>
+  <title>Bayesian Product Discovery — Bayes Updater</title>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     :root {
@@ -55,7 +55,7 @@
 
     .controls {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
       margin: 26px 0 18px;
       padding: 16px;
@@ -80,6 +80,15 @@
 
     input[type="range"] { width: 100%; }
 
+    input[type="number"] {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font: inherit;
+      background: #fff;
+    }
+
     .value {
       display: inline-block;
       min-width: 4.5ch;
@@ -89,7 +98,7 @@
 
     .summary {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
       margin: 14px 0 18px;
     }
@@ -152,6 +161,90 @@
       margin: 10px 0 20px;
     }
 
+    .evidence {
+      margin: 12px 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .evidenceHeader {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+    }
+
+    .evidenceHeader .title {
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .evidenceHeader .subtitle {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-left: 8px;
+      font-weight: 500;
+    }
+
+    .evidenceList {
+      display: grid;
+      gap: 0;
+    }
+
+    .row {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .row:last-child { border-bottom: none; }
+
+    .field label {
+      font-size: 0.9rem;
+      font-weight: 750;
+      margin-bottom: 6px;
+    }
+
+    .field .mini {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: 1fr 90px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .rowActions {
+      display: flex;
+      justify-content: flex-end;
+      padding-top: 26px;
+    }
+
+    .rowActions button {
+      border-radius: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--fg);
+      font-weight: 750;
+    }
+
+    .rowActions button:hover {
+      border-color: var(--fg);
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -169,193 +262,385 @@
     @media (max-width: 760px) {
       .controls, .summary { grid-template-columns: 1fr; }
       #chart { height: 420px; }
+      .row { grid-template-columns: 1fr; }
+      .rowActions { padding-top: 0; }
     }
   </style>
 </head>
 <body>
   <main>
     <h1>Bayesian Product Discovery</h1>
-    <p class="lead">A small static demo for showing how a product idea moves from a prior belief, through problem evidence, then through delivery capability evidence.</p>
+    <p class="lead">
+      Dashboards don’t change minds. This tool supports the article’s thesis: use Bayes as a formal mechanism for updating belief from a skeptical outside-view prior as high-integrity signals arrive.
+    </p>
+    <p class="lead">
+      Each “test” is a binary signal with an observed outcome: positive \(E^+\) or negative \(E^-\).
+      You enter its <span class="mono">sensitivity</span> \(P(E^+\mid H)\) and <span class="mono">specificity</span> \(P(E^-\mid \neg H)\).
+      (False negative and false positive rates are implied.)
+    </p>
 
     <section class="controls" aria-label="Inputs">
-      <label>
-        Prior project success <span class="value" id="priorValue">20%</span>
-        <span class="hint">Your outside-view starting belief.</span>
-        <input id="prior" type="range" min="1" max="99" value="20" />
+      <label for="priorRange">
+        Step 1 — Prior \(P(H)\) (Outside View) <span class="value mono" id="priorValue">0.2</span>
+        <span class="hint">Your baseline success rate from a reference class (e.g. “20% of investments yield intended benefits”).</span>
+        <input id="priorRange" type="range" min="0" max="1" step="0.01" value="0.20" />
+        <span class="hint">Or type a value in \([0,1]\).</span>
+        <input id="priorNumber" type="number" min="0" max="1" step="0.01" value="0.20" inputmode="decimal" />
       </label>
 
-      <label>
-        Problem evidence posterior <span class="value" id="problemValue">94%</span>
-        <span class="hint">After five users cite the problem as important.</span>
-        <input id="problem" type="range" min="1" max="99" value="94" />
-      </label>
+      <div>
+        <label for="hypothesisText" style="margin-bottom: 6px;">Hypothesis \(H\)</label>
+        <span class="hint">Plain-English hypothesis you’re investing in.</span>
+        <input id="hypothesisText" type="text" placeholder="e.g. “This project succeeds”" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;" />
+      </div>
+    </section>
 
-      <label>
-        Delivery capability <span class="value" id="deliveryValue">70%</span>
-        <span class="hint">Confidence the team can ship a slice in 4 weeks.</span>
-        <input id="delivery" type="range" min="1" max="99" value="70" />
-      </label>
+    <section class="evidence" aria-label="Evidence list">
+      <div class="evidenceHeader">
+        <div>
+          <span class="title">Step 2 — Signals (Tests)</span>
+          <span class="subtitle">Each row is a test that updates the posterior</span>
+        </div>
+        <div class="actions" style="margin:0;">
+          <button id="addEvidence" class="secondary">Add evidence</button>
+          <button id="reset">Reset article example</button>
+        </div>
+      </div>
+      <div class="evidenceList" id="evidenceList"></div>
     </section>
 
     <div class="actions">
-      <button id="reset">Reset example</button>
-      <button id="scenarioLow" class="secondary">Cautious case</button>
-      <button id="scenarioHigh" class="secondary">Strong case</button>
+      <button id="scenarioLow" class="secondary">Cautious example</button>
+      <button id="scenarioHigh" class="secondary">Strong example</button>
     </div>
 
     <section class="summary" aria-label="Summary">
       <div class="card">
         <div class="kicker">Prior</div>
-        <div class="big" id="priorCard">20%</div>
+        <div class="big mono" id="priorCard">0.20</div>
       </div>
       <div class="card">
-        <div class="kicker">After problem evidence</div>
-        <div class="big" id="problemCard">94%</div>
+        <div class="kicker">Posterior (after last test)</div>
+        <div class="big mono" id="posteriorCard">—</div>
       </div>
       <div class="card">
-        <div class="kicker">Delivery capability</div>
-        <div class="big" id="deliveryCard">70%</div>
-      </div>
-      <div class="card">
-        <div class="kicker">Overall belief</div>
-        <div class="big" id="overallCard">66%</div>
+        <div class="kicker">Number of tests</div>
+        <div class="big mono" id="stepsCard">0</div>
       </div>
     </section>
 
-    <div id="chart" role="img" aria-label="Bayesian update chart"></div>
+    <div id="chart" aria-label="Bayesian update chart"></div>
 
-    <h2>What this chart is showing</h2>
-    <p>
-      Start with an outside-view prior: the chance this project will produce the intended outcome before we run discovery.
-      Then add problem evidence: five interviews where people independently cite the same problem as important enough to solve.
-      Then add delivery capability: the chance the team can get a thin slice into a production environment within four weeks.
-    </p>
-    <p>
-      The final number is deliberately simple: the problem-evidence posterior multiplied by delivery capability. It says:
-      even if the problem looks real, confidence should be discounted if we are not yet confident we can deliver a real slice.
-    </p>
-
-    <div class="formula">overall belief = P(success after problem evidence) × P(deliver a production slice in 4 weeks)</div>
-
-    <h2>The two levels of inference</h2>
-    <table>
+    <h2>Steps</h2>
+    <table aria-label="Posterior table">
       <thead>
         <tr>
-          <th>Level</th>
-          <th>Question</th>
-          <th>What updates</th>
+          <th>Step</th>
+          <th>Observed</th>
+          <th>Sensitivity \(P(E^+\mid H)\)</th>
+          <th>Specificity \(P(E^-\mid \neg H)\)</th>
+          <th>LR (observed)</th>
+          <th>\(P(H)\) after update</th>
         </tr>
       </thead>
-      <tbody>
-        <tr>
-          <td>1. Problem discovery</td>
-          <td>Do users cite this as a problem important to them?</td>
-          <td>Our belief that the idea is worth pursuing.</td>
-        </tr>
-        <tr>
-          <td>2. Delivery capability</td>
-          <td>Can the team deliver a thin slice to production within four weeks?</td>
-          <td>Our belief that the opportunity can become real quickly enough to matter.</td>
-        </tr>
-      </tbody>
+      <tbody id="stepsTableBody"></tbody>
     </table>
 
-    <h2>Why five interviews can matter</h2>
-    <p>
-      Five interviews do not prove universal truth. They reduce uncertainty. If five people are sampled independently and all five point to the same important problem, that is a stronger signal than vague stakeholder enthusiasm or dashboard activity.
-    </p>
-    <p>
-      The point is not to pretend the number is perfect. The point is to make belief visible, testable, and updateable.
-    </p>
-
-    <h2>How to use it in a workshop</h2>
-    <p>
-      Ask the group for the prior first, before discussing the new evidence. Then ask what the five interviews should do to belief. Finally, ask whether delivery capability should increase or discount confidence. The conversation usually exposes whether people are arguing about the problem, the solution, or the organisation’s ability to ship.
-    </p>
+    <h2>Step 3 — Posterior (Update)</h2>
+    <div class="formula mono">P(H|E) = (P(H)·P(E|H)) / (P(H)·P(E|H) + (1−P(H))·P(E|¬H))</div>
   </main>
 
   <script>
-    const prior = document.getElementById('prior');
-    const problem = document.getElementById('problem');
-    const delivery = document.getElementById('delivery');
+    const priorRange = document.getElementById('priorRange');
+    const priorNumber = document.getElementById('priorNumber');
+    const hypothesisText = document.getElementById('hypothesisText');
+    const evidenceList = document.getElementById('evidenceList');
+    const stepsTableBody = document.getElementById('stepsTableBody');
 
     const ids = {
       priorValue: document.getElementById('priorValue'),
-      problemValue: document.getElementById('problemValue'),
-      deliveryValue: document.getElementById('deliveryValue'),
       priorCard: document.getElementById('priorCard'),
-      problemCard: document.getElementById('problemCard'),
-      deliveryCard: document.getElementById('deliveryCard'),
-      overallCard: document.getElementById('overallCard')
+      posteriorCard: document.getElementById('posteriorCard'),
+      stepsCard: document.getElementById('stepsCard')
     };
 
-    function pct(n) {
-      return `${Math.round(n)}%`;
+    function clamp01(n) {
+      if (!Number.isFinite(n)) return 0;
+      return Math.max(0, Math.min(1, n));
     }
 
-    function setValues(p, pr, d) {
-      prior.value = p;
-      problem.value = pr;
-      delivery.value = d;
-      update();
+    function applyRateUpdate(k, setSensitivity, setSpecificity, els) {
+      const { sensRange, sensNum, specRange, specNum } = els;
+      switch (k) {
+        case 'sensRange':
+          setSensitivity(Number(sensRange.value));
+          break;
+        case 'sensNum':
+          setSensitivity(Number(sensNum.value));
+          break;
+        case 'specRange':
+          setSpecificity(Number(specRange.value));
+          break;
+        case 'specNum':
+          setSpecificity(Number(specNum.value));
+          break;
+        default:
+          break;
+      }
     }
 
-    function update() {
-      const p = Number(prior.value);
-      const pr = Number(problem.value);
-      const d = Number(delivery.value);
-      const overall = pr * d / 100;
+    function fmt01(n) {
+      if (!Number.isFinite(n)) return '—';
+      return n.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+    }
 
-      ids.priorValue.textContent = pct(p);
-      ids.problemValue.textContent = pct(pr);
-      ids.deliveryValue.textContent = pct(d);
-      ids.priorCard.textContent = pct(p);
-      ids.problemCard.textContent = pct(pr);
-      ids.deliveryCard.textContent = pct(d);
-      ids.overallCard.textContent = pct(overall);
+    function bayesUpdate(p, pEgH, pEgNotH) {
+      const prior = clamp01(p);
+      const a = clamp01(pEgH);
+      const b = clamp01(pEgNotH);
+      const denom = prior * a + (1 - prior) * b;
+      if (denom === 0) return Number.NaN;
+      return (prior * a) / denom;
+    }
 
-      const labels = [
-        'Prior\noutside view',
-        'Posterior\nafter 5 interviews',
-        'Delivery\ncapability',
-        'Overall\nbelief'
+    function likelihoodRatio(pEgH, pEgNotH) {
+      const a = clamp01(pEgH);
+      const b = clamp01(pEgNotH);
+      if (b === 0 && a === 0) return Number.NaN;
+      if (b === 0) return Number.POSITIVE_INFINITY;
+      return a / b;
+    }
+
+    function fmtLR(lr) {
+      if (!Number.isFinite(lr)) return lr === Number.POSITIVE_INFINITY ? '∞' : '—';
+      // Compact but readable: up to 2 decimals, trim trailing zeros.
+      return lr.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+    }
+
+    let evidence = [];
+
+    function setPrior(p) {
+      const v = clamp01(p);
+      priorRange.value = String(v);
+      priorNumber.value = String(v);
+    }
+
+    function readPrior() {
+      return clamp01(Number(priorNumber.value));
+    }
+
+    function makeEvidenceRow(e, index) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.dataset.index = String(index);
+
+      const labelField = document.createElement('div');
+      labelField.className = 'field';
+      labelField.innerHTML = `
+        <label>Label</label>
+        <input data-k="label" type="text" placeholder="e.g. “5 interviews”" value="${(e.label ?? '').replaceAll('"', '&quot;')}" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;" />
+        <span class="hint">Name the signal you’re testing for.</span>
+      `;
+
+      const observedField = document.createElement('div');
+      observedField.className = 'field';
+      observedField.innerHTML = `
+        <label>Observed</label>
+        <span class="hint">What happened in the test.</span>
+        <div class="mini" style="grid-template-columns: 1fr;">
+          <select data-k="observed" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;">
+            <option value="pos">Positive (E+)</option>
+            <option value="neg">Negative (E-)</option>
+          </select>
+        </div>
+      `;
+      // Set initial value from state.
+      {
+        const sel = observedField.querySelector('select[data-k="observed"]');
+        if (sel instanceof HTMLSelectElement) sel.value = e.observed === 'neg' ? 'neg' : 'pos';
+      }
+
+      const pEgHField = document.createElement('div');
+      pEgHField.className = 'field';
+      pEgHField.innerHTML = `
+        <label>Sensitivity</label>
+        <span class="hint">(P(E+|H)) — how often the test is positive when success is true.</span>
+        <div class="mini">
+          <input data-k="sensRange" type="range" min="0" max="1" step="0.01" value="${String(clamp01(e.sensitivity))}" />
+          <input data-k="sensNum" type="number" min="0" max="1" step="0.01" value="${String(clamp01(e.sensitivity))}" inputmode="decimal" />
+        </div>
+      `;
+
+      const pEgNotHField = document.createElement('div');
+      pEgNotHField.className = 'field';
+      pEgNotHField.innerHTML = `
+        <label>Specificity</label>
+        <span class="hint">(P(E-|¬H)) — how often the test is negative when success is false.</span>
+        <div class="mini">
+          <input data-k="specRange" type="range" min="0" max="1" step="0.01" value="${String(clamp01(e.specificity))}" />
+          <input data-k="specNum" type="number" min="0" max="1" step="0.01" value="${String(clamp01(e.specificity))}" inputmode="decimal" />
+        </div>
+      `;
+
+      const actions = document.createElement('div');
+      actions.className = 'rowActions';
+      actions.innerHTML = `<button data-action="remove" type="button">Remove</button>`;
+
+      row.append(labelField, observedField, pEgHField, pEgNotHField, actions);
+
+      function updateRowFromInputs(t) {
+        if (!(t instanceof HTMLElement)) return;
+        const i = Number(row.dataset.index);
+        if (!Number.isFinite(i)) return;
+
+        const labelInput = row.querySelector('input[data-k="label"]');
+        const observedSelect = row.querySelector('select[data-k="observed"]');
+        const sensRange = row.querySelector('input[data-k="sensRange"]');
+        const sensNum = row.querySelector('input[data-k="sensNum"]');
+        const specRange = row.querySelector('input[data-k="specRange"]');
+        const specNum = row.querySelector('input[data-k="specNum"]');
+
+        if (!(labelInput instanceof HTMLInputElement)) return;
+        if (!(observedSelect instanceof HTMLSelectElement)) return;
+        if (!(sensRange instanceof HTMLInputElement)) return;
+        if (!(sensNum instanceof HTMLInputElement)) return;
+        if (!(specRange instanceof HTMLInputElement)) return;
+        if (!(specNum instanceof HTMLInputElement)) return;
+
+        const setSensitivity = (v) => {
+          const vv = clamp01(v);
+          sensRange.value = String(vv);
+          sensNum.value = String(vv);
+        };
+        const setSpecificity = (v) => {
+          const vv = clamp01(v);
+          specRange.value = String(vv);
+          specNum.value = String(vv);
+        };
+
+        const k = t.dataset ? t.dataset.k : undefined;
+        applyRateUpdate(k, setSensitivity, setSpecificity, { sensRange, sensNum, specRange, specNum });
+
+        evidence[i] = {
+          label: labelInput.value,
+          observed: observedSelect.value === 'neg' ? 'neg' : 'pos',
+          sensitivity: clamp01(Number(sensNum.value)),
+          specificity: clamp01(Number(specNum.value))
+        };
+      }
+
+      row.addEventListener('input', (ev) => {
+        const t = ev.target;
+        updateRowFromInputs(t);
+        update();
+      });
+
+      row.addEventListener('click', (ev) => {
+        const t = ev.target;
+        if (!(t instanceof HTMLElement)) return;
+        if (t.dataset.action === 'remove') {
+          const i = Number(row.dataset.index);
+          if (!Number.isFinite(i)) return;
+          evidence.splice(i, 1);
+          renderEvidence();
+          update();
+        }
+      });
+
+      return row;
+    }
+
+    function renderEvidence() {
+      evidenceList.innerHTML = '';
+      evidence.forEach((e, i) => evidenceList.appendChild(makeEvidenceRow(e, i)));
+      ids.stepsCard.textContent = String(evidence.length);
+    }
+
+    function computeChain() {
+      const prior = readPrior();
+      const steps = [
+        { step: 'Prior', p: prior, observed: '', sensitivity: Number.NaN, specificity: Number.NaN, pEgH: Number.NaN, pEgNotH: Number.NaN, label: 'Prior' }
       ];
 
-      const values = [p, pr, d, overall];
-      const hover = [
-        `Starting belief: ${pct(p)}`,
-        `Belief after problem evidence: ${pct(pr)}`,
-        `Capability to ship slice: ${pct(d)}`,
-        `Overall belief: ${pct(overall)}`
-      ];
+      let current = prior;
+      for (let i = 0; i < evidence.length; i++) {
+        const e = evidence[i];
+        const observed = e.observed === 'neg' ? 'neg' : 'pos';
+        const sens = clamp01(e.sensitivity); // P(E+|H)
+        const spec = clamp01(e.specificity); // P(E-|¬H)
+        const pPosNotH = clamp01(1 - spec); // false positive rate = P(E+|¬H)
+        const pNegH = clamp01(1 - sens);    // false negative rate = P(E-|H)
+        const pEgH = observed === 'pos' ? sens : pNegH;
+        const pEgNotH = observed === 'pos' ? pPosNotH : spec;
+        const next = Number.isFinite(current) ? bayesUpdate(current, pEgH, pEgNotH) : Number.NaN;
+        steps.push({
+          step: `E${i + 1}`,
+          p: next,
+          observed,
+          sensitivity: sens,
+          specificity: spec,
+          pEgH,
+          pEgNotH,
+          label: (e.label && e.label.trim()) ? e.label.trim() : `Evidence ${i + 1}`
+        });
+        current = next;
+      }
+
+      return steps;
+    }
+
+    function renderTable(steps) {
+      stepsTableBody.innerHTML = '';
+      for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
+        const tr = document.createElement('tr');
+        let observed = '—';
+        if (i !== 0) observed = s.observed === 'neg' ? 'E-' : 'E+';
+        const sens = Number.isFinite(s.sensitivity) ? fmt01(s.sensitivity) : '—';
+        const spec = Number.isFinite(s.specificity) ? fmt01(s.specificity) : '—';
+        const lr = i === 0 ? '—' : fmtLR(likelihoodRatio(s.pEgH, s.pEgNotH));
+        tr.innerHTML = `
+          <td><span class="mono">${s.step}</span> ${i === 0 ? '' : `<span style="color:var(--muted);font-size:0.9rem">(${s.label.replaceAll('<', '&lt;')})</span>`}</td>
+          <td class="mono">${observed}</td>
+          <td class="mono">${sens}</td>
+          <td class="mono">${spec}</td>
+          <td class="mono">${lr}</td>
+          <td class="mono">${fmt01(s.p)}</td>
+        `;
+        stepsTableBody.appendChild(tr);
+      }
+    }
+
+    function renderChart(steps) {
+      const labels = steps.map((s, i) => i === 0 ? 'Prior' : s.step);
+      const values = steps.map(s => s.p);
+      const hover = steps.map((s, i) => {
+        if (i === 0) return `Prior P(H) = ${fmt01(s.p)}`;
+        const lr = likelihoodRatio(s.pEgH, s.pEgNotH);
+        const obs = s.observed === 'neg' ? 'E-' : 'E+';
+        const fp = clamp01(1 - s.specificity);
+        const fn = clamp01(1 - s.sensitivity);
+        return `${s.label}\nObserved: ${obs}\nSensitivity P(E+|H)=${fmt01(s.sensitivity)}\nSpecificity P(E-|¬H)=${fmt01(s.specificity)}\n(FP=${fmt01(fp)}, FN=${fmt01(fn)})\nLR(observed)=${fmtLR(lr)}\nPosterior P(H)=${fmt01(s.p)}`;
+      });
 
       const traceLine = {
         x: labels,
-        y: values,
+        y: values.map(v => Number.isFinite(v) ? v : null),
         type: 'scatter',
         mode: 'lines+markers',
         line: { width: 3, color: '#111111' },
         marker: { size: 11, color: '#111111' },
         text: hover,
         hovertemplate: '%{text}<extra></extra>',
-        name: 'Belief'
-      };
-
-      const traceBars = {
-        x: labels,
-        y: values,
-        type: 'bar',
-        marker: { color: 'rgba(0,0,0,0.12)' },
-        hoverinfo: 'skip',
-        showlegend: false
+        name: 'Posterior'
       };
 
       const layout = {
-        margin: { l: 56, r: 24, t: 24, b: 74 },
+        margin: { l: 56, r: 24, t: 24, b: 58 },
         yaxis: {
-          title: 'Probability',
-          range: [0, 100],
-          ticksuffix: '%',
+          title: 'Posterior probability',
+          range: [0, 1],
+          tickformat: '.2f',
           gridcolor: '#e6e6e6',
           zeroline: false
         },
@@ -366,24 +651,114 @@
         plot_bgcolor: '#ffffff',
         paper_bgcolor: '#ffffff',
         font: { family: 'system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif', color: '#111111' },
-        annotations: values.map((value, i) => ({
-          x: labels[i],
-          y: value + 5,
-          text: pct(value),
-          showarrow: false,
-          font: { size: 13, color: '#111111' }
-        }))
+        annotations: labels.map((lab, i) => {
+          const v = values[i];
+          if (!Number.isFinite(v)) return null;
+          return {
+            x: lab,
+            y: Math.min(1, v + 0.06),
+            text: fmt01(v),
+            showarrow: false,
+            font: { size: 13, color: '#111111' }
+          };
+        }).filter(Boolean)
       };
 
-      Plotly.react('chart', [traceBars, traceLine], layout, { responsive: true, displayModeBar: false });
+      Plotly.react('chart', [traceLine], layout, { responsive: true, displayModeBar: false });
     }
 
-    [prior, problem, delivery].forEach(input => input.addEventListener('input', update));
-    document.getElementById('reset').addEventListener('click', () => setValues(20, 94, 70));
-    document.getElementById('scenarioLow').addEventListener('click', () => setValues(20, 55, 45));
-    document.getElementById('scenarioHigh').addEventListener('click', () => setValues(20, 94, 85));
+    function update() {
+      const prior = readPrior();
+      ids.priorValue.textContent = fmt01(prior);
+      ids.priorCard.textContent = fmt01(prior);
 
-    update();
+      const steps = computeChain();
+      renderTable(steps);
+      renderChart(steps);
+
+      const last = steps[steps.length - 1]?.p;
+      ids.posteriorCard.textContent = Number.isFinite(last) ? fmt01(last) : '—';
+    }
+
+    function setScenario({ prior, evidenceRows, label }) {
+      setPrior(prior);
+      hypothesisText.value = label ?? '';
+      evidence = evidenceRows.map(r => ({
+        label: r.label ?? '',
+        observed: r.observed === 'neg' ? 'neg' : 'pos',
+        sensitivity: clamp01(r.sensitivity),
+        specificity: clamp01(r.specificity)
+      }));
+      renderEvidence();
+      update();
+    }
+
+    function wirePriorSync() {
+      priorRange.addEventListener('input', () => {
+        const v = clamp01(Number(priorRange.value));
+        priorNumber.value = String(v);
+        update();
+      });
+      priorNumber.addEventListener('input', () => {
+        const v = clamp01(Number(priorNumber.value));
+        priorRange.value = String(v);
+        priorNumber.value = String(v);
+        update();
+      });
+    }
+
+    wirePriorSync();
+
+    document.getElementById('addEvidence').addEventListener('click', () => {
+      evidence.push({ label: '', observed: 'pos', sensitivity: 0.7, specificity: 0.7 });
+      renderEvidence();
+      update();
+    });
+
+    document.getElementById('reset').addEventListener('click', () => setScenario({
+      label: 'This investment yields intended benefits',
+      prior: 0.2,
+      evidenceRows: [
+        // Article alignment:
+        // Prior 0.2 → Posterior 0.9375 implies LR=60 on odds (0.25 × 60 = 15).
+        // In sensitivity/specificity terms:
+        // LR(E+) = sensitivity / (1 - specificity) = 60
+        // Choose sensitivity=1 and specificity=59/60 so FP=1/60.
+        { label: 'Rule of Five: 5/5 confirm the pain', observed: 'pos', sensitivity: 1, specificity: 59 / 60 },
+        // Example “ship to prod within timebox” test:
+        // sensitivity = 0.8 (often happens when success is true)
+        // specificity = 0.8 (often does NOT happen when success is false)
+        { label: 'Timeboxed delivery: ship a slice to prod', observed: 'pos', sensitivity: 0.8, specificity: 0.8 }
+      ]
+    }));
+
+    document.getElementById('scenarioLow').addEventListener('click', () => setScenario({
+      label: 'This investment yields intended benefits',
+      prior: 0.2,
+      evidenceRows: [
+        { label: 'Vanity signal (weak LR)', observed: 'pos', sensitivity: 0.55, specificity: 0.5 },
+        { label: 'Noisy follow-up', observed: 'pos', sensitivity: 0.55, specificity: 0.5 }
+      ]
+    }));
+
+    document.getElementById('scenarioHigh').addEventListener('click', () => setScenario({
+      label: 'This investment yields intended benefits',
+      prior: 0.2,
+      evidenceRows: [
+        { label: 'Rule of Five: 5/5 confirm the pain', observed: 'pos', sensitivity: 1, specificity: 59 / 60 },
+        { label: 'Slice shipped inside the timebox', observed: 'pos', sensitivity: 0.85, specificity: 0.75 }
+      ]
+    }));
+
+    // Initial
+    setScenario({
+      label: 'This investment yields intended benefits',
+      prior: 0.2,
+      evidenceRows: [
+        { label: 'Rule of Five: 5/5 confirm the pain', observed: 'pos', sensitivity: 1, specificity: 59 / 60 },
+        { label: 'Timeboxed delivery: ship a slice to prod', observed: 'pos', sensitivity: 0.8, specificity: 0.8 }
+      ]
+    });
   </script>
 </body>
 </html>
