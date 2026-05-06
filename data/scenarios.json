@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Default discovery case",
+    "priorProjectSuccess": 20,
+    "problemEvidencePosterior": 94,
+    "deliveryCapability": 70
+  },
+  {
+    "name": "Cautious case",
+    "priorProjectSuccess": 20,
+    "problemEvidencePosterior": 55,
+    "deliveryCapability": 45
+  },
+  {
+    "name": "Strong case",
+    "priorProjectSuccess": 20,
+    "problemEvidencePosterior": 94,
+    "deliveryCapability": 85
+  }
+]

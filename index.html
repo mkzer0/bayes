@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bayesian Product Discovery</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #111111;
+      --muted: #5f6368;
+      --line: #dddddd;
+      --soft: #f6f6f6;
+      --accent: #111111;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+      color: var(--fg);
+      background: var(--bg);
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    h2 {
+      margin-top: 34px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+      font-size: 1.25rem;
+    }
+
+    p { max-width: 80ch; }
+
+    .lead {
+      margin-top: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 26px 0 18px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--soft);
+    }
+
+    label {
+      display: block;
+      font-weight: 650;
+      font-size: 0.95rem;
+    }
+
+    .hint {
+      display: block;
+      margin: 3px 0 8px;
+      color: var(--muted);
+      font-weight: 400;
+      font-size: 0.86rem;
+    }
+
+    input[type="range"] { width: 100%; }
+
+    .value {
+      display: inline-block;
+      min-width: 4.5ch;
+      font-variant-numeric: tabular-nums;
+      font-weight: 750;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 14px 0 18px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .card .kicker {
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-bottom: 4px;
+    }
+
+    .card .big {
+      font-size: 1.7rem;
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #chart {
+      width: 100%;
+      height: 470px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .formula {
+      padding: 12px 14px;
+      border-left: 4px solid var(--accent);
+      background: var(--soft);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      overflow-x: auto;
+    }
+
+    button {
+      border: 1px solid var(--fg);
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: var(--fg);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #fff;
+      color: var(--fg);
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 10px 0 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 6px;
+      text-align: left;
+    }
+
+    th { font-size: 0.9rem; }
+
+    @media (max-width: 760px) {
+      .controls, .summary { grid-template-columns: 1fr; }
+      #chart { height: 420px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Bayesian Product Discovery</h1>
+    <p class="lead">A small static demo for showing how a product idea moves from a prior belief, through problem evidence, then through delivery capability evidence.</p>
+
+    <section class="controls" aria-label="Inputs">
+      <label>
+        Prior project success <span class="value" id="priorValue">20%</span>
+        <span class="hint">Your outside-view starting belief.</span>
+        <input id="prior" type="range" min="1" max="99" value="20" />
+      </label>
+
+      <label>
+        Problem evidence posterior <span class="value" id="problemValue">94%</span>
+        <span class="hint">After five users cite the problem as important.</span>
+        <input id="problem" type="range" min="1" max="99" value="94" />
+      </label>
+
+      <label>
+        Delivery capability <span class="value" id="deliveryValue">70%</span>
+        <span class="hint">Confidence the team can ship a slice in 4 weeks.</span>
+        <input id="delivery" type="range" min="1" max="99" value="70" />
+      </label>
+    </section>
+
+    <div class="actions">
+      <button id="reset">Reset example</button>
+      <button id="scenarioLow" class="secondary">Cautious case</button>
+      <button id="scenarioHigh" class="secondary">Strong case</button>
+    </div>
+
+    <section class="summary" aria-label="Summary">
+      <div class="card">
+        <div class="kicker">Prior</div>
+        <div class="big" id="priorCard">20%</div>
+      </div>
+      <div class="card">
+        <div class="kicker">After problem evidence</div>
+        <div class="big" id="problemCard">94%</div>
+      </div>
+      <div class="card">
+        <div class="kicker">Delivery capability</div>
+        <div class="big" id="deliveryCard">70%</div>
+      </div>
+      <div class="card">
+        <div class="kicker">Overall belief</div>
+        <div class="big" id="overallCard">66%</div>
+      </div>
+    </section>
+
+    <div id="chart" role="img" aria-label="Bayesian update chart"></div>
+
+    <h2>What this chart is showing</h2>
+    <p>
+      Start with an outside-view prior: the chance this project will produce the intended outcome before we run discovery.
+      Then add problem evidence: five interviews where people independently cite the same problem as important enough to solve.
+      Then add delivery capability: the chance the team can get a thin slice into a production environment within four weeks.
+    </p>
+    <p>
+      The final number is deliberately simple: the problem-evidence posterior multiplied by delivery capability. It says:
+      even if the problem looks real, confidence should be discounted if we are not yet confident we can deliver a real slice.
+    </p>
+
+    <div class="formula">overall belief = P(success after problem evidence) × P(deliver a production slice in 4 weeks)</div>
+
+    <h2>The two levels of inference</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Level</th>
+          <th>Question</th>
+          <th>What updates</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1. Problem discovery</td>
+          <td>Do users cite this as a problem important to them?</td>
+          <td>Our belief that the idea is worth pursuing.</td>
+        </tr>
+        <tr>
+          <td>2. Delivery capability</td>
+          <td>Can the team deliver a thin slice to production within four weeks?</td>
+          <td>Our belief that the opportunity can become real quickly enough to matter.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Why five interviews can matter</h2>
+    <p>
+      Five interviews do not prove universal truth. They reduce uncertainty. If five people are sampled independently and all five point to the same important problem, that is a stronger signal than vague stakeholder enthusiasm or dashboard activity.
+    </p>
+    <p>
+      The point is not to pretend the number is perfect. The point is to make belief visible, testable, and updateable.
+    </p>
+
+    <h2>How to use it in a workshop</h2>
+    <p>
+      Ask the group for the prior first, before discussing the new evidence. Then ask what the five interviews should do to belief. Finally, ask whether delivery capability should increase or discount confidence. The conversation usually exposes whether people are arguing about the problem, the solution, or the organisation’s ability to ship.
+    </p>
+  </main>
+
+  <script>
+    const prior = document.getElementById('prior');
+    const problem = document.getElementById('problem');
+    const delivery = document.getElementById('delivery');
+
+    const ids = {
+      priorValue: document.getElementById('priorValue'),
+      problemValue: document.getElementById('problemValue'),
+      deliveryValue: document.getElementById('deliveryValue'),
+      priorCard: document.getElementById('priorCard'),
+      problemCard: document.getElementById('problemCard'),
+      deliveryCard: document.getElementById('deliveryCard'),
+      overallCard: document.getElementById('overallCard')
+    };
+
+    function pct(n) {
+      return `${Math.round(n)}%`;
+    }
+
+    function setValues(p, pr, d) {
+      prior.value = p;
+      problem.value = pr;
+      delivery.value = d;
+      update();
+    }
+
+    function update() {
+      const p = Number(prior.value);
+      const pr = Number(problem.value);
+      const d = Number(delivery.value);
+      const overall = pr * d / 100;
+
+      ids.priorValue.textContent = pct(p);
+      ids.problemValue.textContent = pct(pr);
+      ids.deliveryValue.textContent = pct(d);
+      ids.priorCard.textContent = pct(p);
+      ids.problemCard.textContent = pct(pr);
+      ids.deliveryCard.textContent = pct(d);
+      ids.overallCard.textContent = pct(overall);
+
+      const labels = [
+        'Prior\noutside view',
+        'Posterior\nafter 5 interviews',
+        'Delivery\ncapability',
+        'Overall\nbelief'
+      ];
+
+      const values = [p, pr, d, overall];
+      const hover = [
+        `Starting belief: ${pct(p)}`,
+        `Belief after problem evidence: ${pct(pr)}`,
+        `Capability to ship slice: ${pct(d)}`,
+        `Overall belief: ${pct(overall)}`
+      ];
+
+      const traceLine = {
+        x: labels,
+        y: values,
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { width: 3, color: '#111111' },
+        marker: { size: 11, color: '#111111' },
+        text: hover,
+        hovertemplate: '%{text}<extra></extra>',
+        name: 'Belief'
+      };
+
+      const traceBars = {
+        x: labels,
+        y: values,
+        type: 'bar',
+        marker: { color: 'rgba(0,0,0,0.12)' },
+        hoverinfo: 'skip',
+        showlegend: false
+      };
+
+      const layout = {
+        margin: { l: 56, r: 24, t: 24, b: 74 },
+        yaxis: {
+          title: 'Probability',
+          range: [0, 100],
+          ticksuffix: '%',
+          gridcolor: '#e6e6e6',
+          zeroline: false
+        },
+        xaxis: {
+          tickfont: { size: 12 }
+        },
+        showlegend: false,
+        plot_bgcolor: '#ffffff',
+        paper_bgcolor: '#ffffff',
+        font: { family: 'system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif', color: '#111111' },
+        annotations: values.map((value, i) => ({
+          x: labels[i],
+          y: value + 5,
+          text: pct(value),
+          showarrow: false,
+          font: { size: 13, color: '#111111' }
+        }))
+      };
+
+      Plotly.react('chart', [traceBars, traceLine], layout, { responsive: true, displayModeBar: false });
+    }
+
+    [prior, problem, delivery].forEach(input => input.addEventListener('input', update));
+    document.getElementById('reset').addEventListener('click', () => setValues(20, 94, 70));
+    document.getElementById('scenarioLow').addEventListener('click', () => setValues(20, 55, 45));
+    document.getElementById('scenarioHigh').addEventListener('click', () => setValues(20, 94, 85));
+
+    update();
+  </script>
+</body>
+</html>
