@@ -271,18 +271,20 @@
   <main>
     <h1>Bayesian Product Discovery</h1>
     <p class="lead">
-      Dashboards don’t change minds. This tool supports the article’s thesis: use Bayes as a formal mechanism for updating belief from a skeptical outside-view prior as high-integrity signals arrive.
+      Vanity metrics feel like control. They don’t make decisions easier.
     </p>
     <p class="lead">
-      Each “test” is a binary signal with an observed outcome: positive \(E^+\) or negative \(E^-\).
-      You enter its <span class="mono">sensitivity</span> \(P(E^+\mid H)\) and <span class="mono">specificity</span> \(P(E^-\mid \neg H)\).
-      (False negative and false positive rates are implied.)
+      This tool is for disciplined mind-changing: start with an outside-view prior, then update it when a real test comes back.
+    </p>
+    <p class="lead">
+      Each row is one binary test. Pick what happened (positive / negative), then enter the test’s
+      <span class="mono">sensitivity</span> (true positive rate) and <span class="mono">specificity</span> (true negative rate).
     </p>
 
     <section class="controls" aria-label="Inputs">
       <label for="priorRange">
         Step 1 — Prior \(P(H)\) (Outside View) <span class="value mono" id="priorValue">0.2</span>
-        <span class="hint">Your baseline success rate from a reference class (e.g. “20% of investments yield intended benefits”).</span>
+        <span class="hint">Baseline success rate from a reference class (your outside view).</span>
         <input id="priorRange" type="range" min="0" max="1" step="0.01" value="0.20" />
         <span class="hint">Or type a value in \([0,1]\).</span>
         <input id="priorNumber" type="number" min="0" max="1" step="0.01" value="0.20" inputmode="decimal" />
@@ -298,20 +300,20 @@
     <section class="evidence" aria-label="Evidence list">
       <div class="evidenceHeader">
         <div>
-          <span class="title">Step 2 — Signals (Tests)</span>
-          <span class="subtitle">Each row is a test that updates the posterior</span>
+          <span class="title">Step 2 — Signals (tests)</span>
+          <span class="subtitle">Add tests that would actually change a decision</span>
         </div>
         <div class="actions" style="margin:0;">
           <button id="addEvidence" class="secondary">Add evidence</button>
-          <button id="reset">Reset article example</button>
+          <button id="reset">Reset defaults</button>
         </div>
       </div>
       <div class="evidenceList" id="evidenceList"></div>
     </section>
 
     <div class="actions">
-      <button id="scenarioLow" class="secondary">Cautious example</button>
-      <button id="scenarioHigh" class="secondary">Strong example</button>
+      <button id="scenarioLow" class="secondary">Weak signals</button>
+      <button id="scenarioHigh" class="secondary">Strong signals</button>
     </div>
 
     <section class="summary" aria-label="Summary">
@@ -417,6 +419,24 @@
       return lr.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
     }
 
+    const SIGNALS = [
+      { id: 'partner_paid', group: 'Demand', name: 'Design partner pays / signs for a pilot' },
+      { id: 'partner_loi', group: 'Demand', name: 'Design partner signs LOI (non-binding commitment)' },
+      { id: 'concierge_workflow', group: 'Demand', name: 'Users complete the workflow (even via concierge)' },
+      { id: 'switching', group: 'Demand', name: 'Users switch from current tool / workaround' },
+      { id: 'onboarding_data', group: 'Adoption', name: 'User onboards + shares real data' },
+      { id: 'repeat_usage', group: 'Adoption', name: 'Repeat usage within a week (retention proxy)' },
+      { id: 'invite_teammate', group: 'Adoption', name: 'User invites a teammate (spread inside account)' },
+      { id: 'timebox_ship', group: 'Delivery', name: 'Ship a thin slice to prod within the timebox' },
+      { id: 'cycle_time', group: 'Delivery', name: 'Cycle time improves (lead time down)' },
+      { id: 'support_load', group: 'Quality', name: 'Support load stays manageable after release' }
+    ];
+
+    function signalNameById(id) {
+      const hit = SIGNALS.find(s => s.id === id);
+      return hit ? hit.name : '';
+    }
+
     let evidence = [];
 
     function setPrior(p) {
@@ -436,10 +456,26 @@
 
       const labelField = document.createElement('div');
       labelField.className = 'field';
+      const signalOptions = [
+        `<option value="">Choose a signal…</option>`,
+        ...Array.from(new Set(SIGNALS.map(s => s.group))).map(group => {
+          const opts = SIGNALS
+            .filter(s => s.group === group)
+            .map(s => `<option value="${s.id}">${s.name.replaceAll('<', '&lt;')}</option>`)
+            .join('');
+          return `<optgroup label="${group}">${opts}</optgroup>`;
+        }),
+        `<option value="custom">Custom…</option>`
+      ].join('');
       labelField.innerHTML = `
-        <label>Label</label>
-        <input data-k="label" type="text" placeholder="e.g. “5 interviews”" value="${(e.label ?? '').replaceAll('"', '&quot;')}" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;" />
-        <span class="hint">Name the signal you’re testing for.</span>
+        <label>Signal</label>
+        <span class="hint">Pick a shared signal so teams use the same language.</span>
+        <div class="mini" style="grid-template-columns: 1fr;">
+          <select data-k="signalId" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;">
+            ${signalOptions}
+          </select>
+        </div>
+        <input data-k="customLabel" type="text" placeholder="Custom signal name" value="${(e.customLabel ?? '').replaceAll('"', '&quot;')}" style="margin-top:8px;display:none;width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;" />
       `;
 
       const observedField = document.createElement('div');
@@ -459,12 +495,25 @@
         const sel = observedField.querySelector('select[data-k="observed"]');
         if (sel instanceof HTMLSelectElement) sel.value = e.observed === 'neg' ? 'neg' : 'pos';
       }
+      {
+        const signalSel = labelField.querySelector('select[data-k="signalId"]');
+        const customInput = labelField.querySelector('input[data-k="customLabel"]');
+        if (signalSel instanceof HTMLSelectElement) {
+          const id = e.signalId ?? '';
+          signalSel.value = id || '';
+          if (id === 'custom' && customInput instanceof HTMLInputElement) customInput.style.display = 'block';
+        }
+        if (customInput instanceof HTMLInputElement) {
+          const id = e.signalId ?? '';
+          customInput.style.display = id === 'custom' ? 'block' : 'none';
+        }
+      }
 
       const pEgHField = document.createElement('div');
       pEgHField.className = 'field';
       pEgHField.innerHTML = `
         <label>Sensitivity</label>
-        <span class="hint">(P(E+|H)) — how often the test is positive when success is true.</span>
+        <span class="hint">(P(E+|H)) If we’re going to succeed, how often do we see this?</span>
         <div class="mini">
           <input data-k="sensRange" type="range" min="0" max="1" step="0.01" value="${String(clamp01(e.sensitivity))}" />
           <input data-k="sensNum" type="number" min="0" max="1" step="0.01" value="${String(clamp01(e.sensitivity))}" inputmode="decimal" />
@@ -475,7 +524,7 @@
       pEgNotHField.className = 'field';
       pEgNotHField.innerHTML = `
         <label>Specificity</label>
-        <span class="hint">(P(E-|¬H)) — how often the test is negative when success is false.</span>
+        <span class="hint">(P(E-|¬H)) If we’re going to fail, how often do we NOT see this?</span>
         <div class="mini">
           <input data-k="specRange" type="range" min="0" max="1" step="0.01" value="${String(clamp01(e.specificity))}" />
           <input data-k="specNum" type="number" min="0" max="1" step="0.01" value="${String(clamp01(e.specificity))}" inputmode="decimal" />
@@ -493,19 +542,23 @@
         const i = Number(row.dataset.index);
         if (!Number.isFinite(i)) return;
 
-        const labelInput = row.querySelector('input[data-k="label"]');
+        const signalSelect = row.querySelector('select[data-k="signalId"]');
+        const customLabelInput = row.querySelector('input[data-k="customLabel"]');
         const observedSelect = row.querySelector('select[data-k="observed"]');
         const sensRange = row.querySelector('input[data-k="sensRange"]');
         const sensNum = row.querySelector('input[data-k="sensNum"]');
         const specRange = row.querySelector('input[data-k="specRange"]');
         const specNum = row.querySelector('input[data-k="specNum"]');
 
-        if (!(labelInput instanceof HTMLInputElement)) return;
-        if (!(observedSelect instanceof HTMLSelectElement)) return;
-        if (!(sensRange instanceof HTMLInputElement)) return;
-        if (!(sensNum instanceof HTMLInputElement)) return;
-        if (!(specRange instanceof HTMLInputElement)) return;
-        if (!(specNum instanceof HTMLInputElement)) return;
+        if (
+          !(signalSelect instanceof HTMLSelectElement) ||
+          !(customLabelInput instanceof HTMLInputElement) ||
+          !(observedSelect instanceof HTMLSelectElement) ||
+          !(sensRange instanceof HTMLInputElement) ||
+          !(sensNum instanceof HTMLInputElement) ||
+          !(specRange instanceof HTMLInputElement) ||
+          !(specNum instanceof HTMLInputElement)
+        ) return;
 
         const setSensitivity = (v) => {
           const vv = clamp01(v);
@@ -519,10 +572,16 @@
         };
 
         const k = t.dataset ? t.dataset.k : undefined;
+        if (k === 'signalId') {
+          customLabelInput.style.display = signalSelect.value === 'custom' ? 'block' : 'none';
+          if (signalSelect.value !== 'custom') customLabelInput.value = '';
+        }
+
         applyRateUpdate(k, setSensitivity, setSpecificity, { sensRange, sensNum, specRange, specNum });
 
         evidence[i] = {
-          label: labelInput.value,
+          signalId: signalSelect.value,
+          customLabel: customLabelInput.value,
           observed: observedSelect.value === 'neg' ? 'neg' : 'pos',
           sensitivity: clamp01(Number(sensNum.value)),
           specificity: clamp01(Number(specNum.value))
@@ -565,6 +624,10 @@
       let current = prior;
       for (let i = 0; i < evidence.length; i++) {
         const e = evidence[i];
+        let label = signalNameById(e.signalId) || `Signal ${i + 1}`;
+        if (e.signalId === 'custom') {
+          label = (e.customLabel && e.customLabel.trim()) ? e.customLabel.trim() : `Custom signal ${i + 1}`;
+        }
         const observed = e.observed === 'neg' ? 'neg' : 'pos';
         const sens = clamp01(e.sensitivity); // P(E+|H)
         const spec = clamp01(e.specificity); // P(E-|¬H)
@@ -581,7 +644,7 @@
           specificity: spec,
           pEgH,
           pEgNotH,
-          label: (e.label && e.label.trim()) ? e.label.trim() : `Evidence ${i + 1}`
+          label
         });
         current = next;
       }
@@ -684,7 +747,8 @@
       setPrior(prior);
       hypothesisText.value = label ?? '';
       evidence = evidenceRows.map(r => ({
-        label: r.label ?? '',
+        signalId: r.signalId ?? '',
+        customLabel: r.customLabel ?? '',
         observed: r.observed === 'neg' ? 'neg' : 'pos',
         sensitivity: clamp01(r.sensitivity),
         specificity: clamp01(r.specificity)
@@ -710,7 +774,7 @@
     wirePriorSync();
 
     document.getElementById('addEvidence').addEventListener('click', () => {
-      evidence.push({ label: '', observed: 'pos', sensitivity: 0.7, specificity: 0.7 });
+      evidence.push({ signalId: '', customLabel: '', observed: 'pos', sensitivity: 0.7, specificity: 0.7 });
       renderEvidence();
       update();
     });
@@ -719,16 +783,18 @@
       label: 'This investment yields intended benefits',
       prior: 0.2,
       evidenceRows: [
-        // Article alignment:
-        // Prior 0.2 → Posterior 0.9375 implies LR=60 on odds (0.25 × 60 = 15).
-        // In sensitivity/specificity terms:
-        // LR(E+) = sensitivity / (1 - specificity) = 60
-        // Choose sensitivity=1 and specificity=59/60 so FP=1/60.
-        { label: 'Rule of Five: 5/5 confirm the pain', observed: 'pos', sensitivity: 1, specificity: 59 / 60 },
-        // Example “ship to prod within timebox” test:
-        // sensitivity = 0.8 (often happens when success is true)
-        // specificity = 0.8 (often does NOT happen when success is false)
-        { label: 'Timeboxed delivery: ship a slice to prod', observed: 'pos', sensitivity: 0.8, specificity: 0.8 }
+        {
+          signalId: 'partner_paid',
+          observed: 'pos',
+          sensitivity: 0.75,
+          specificity: 0.9
+        },
+        {
+          signalId: 'timebox_ship',
+          observed: 'pos',
+          sensitivity: 0.8,
+          specificity: 0.8
+        }
       ]
     }));
 
@@ -736,8 +802,8 @@
       label: 'This investment yields intended benefits',
       prior: 0.2,
       evidenceRows: [
-        { label: 'Vanity signal (weak LR)', observed: 'pos', sensitivity: 0.55, specificity: 0.5 },
-        { label: 'Noisy follow-up', observed: 'pos', sensitivity: 0.55, specificity: 0.5 }
+        { signalId: 'repeat_usage', observed: 'pos', sensitivity: 0.55, specificity: 0.5 },
+        { signalId: 'invite_teammate', observed: 'pos', sensitivity: 0.55, specificity: 0.5 }
       ]
     }));
 
@@ -745,8 +811,8 @@
       label: 'This investment yields intended benefits',
       prior: 0.2,
       evidenceRows: [
-        { label: 'Rule of Five: 5/5 confirm the pain', observed: 'pos', sensitivity: 1, specificity: 59 / 60 },
-        { label: 'Slice shipped inside the timebox', observed: 'pos', sensitivity: 0.85, specificity: 0.75 }
+        { signalId: 'partner_paid', observed: 'pos', sensitivity: 0.8, specificity: 0.95 },
+        { signalId: 'timebox_ship', observed: 'pos', sensitivity: 0.85, specificity: 0.85 }
       ]
     }));
 
@@ -755,8 +821,18 @@
       label: 'This investment yields intended benefits',
       prior: 0.2,
       evidenceRows: [
-        { label: 'Rule of Five: 5/5 confirm the pain', observed: 'pos', sensitivity: 1, specificity: 59 / 60 },
-        { label: 'Timeboxed delivery: ship a slice to prod', observed: 'pos', sensitivity: 0.8, specificity: 0.8 }
+        {
+          signalId: 'partner_paid',
+          observed: 'pos',
+          sensitivity: 0.75,
+          specificity: 0.9
+        },
+        {
+          signalId: 'timebox_ship',
+          observed: 'pos',
+          sensitivity: 0.8,
+          specificity: 0.8
+        }
       ]
     });
   </script>
