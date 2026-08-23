@@ -1,5 +1,8 @@
 # scripts
 
-Placeholder folder matching the LLN demo structure.
+Empty by design. The demo is a single static page with no build step, so there is nothing
+to compile, bundle, or generate.
 
-Future idea: add a script that generates preset discovery scenarios as JSON.
+Kept as a place for optional tooling if the demo ever needs it — for example a script that
+generates preset scenarios into `data/scenarios.json`, or one that checks those presets
+still match the values hard-coded in `index.html`.

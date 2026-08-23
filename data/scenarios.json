@@ -1,20 +1,29 @@
 [
   {
     "name": "Default discovery case",
-    "priorProjectSuccess": 20,
-    "problemEvidencePosterior": 94,
-    "deliveryCapability": 70
+    "hypothesis": "This investment yields intended benefits",
+    "prior": 0.2,
+    "evidence": [
+      { "signalId": "partner_paid", "observed": "pos", "sensitivity": 0.75, "specificity": 0.9 },
+      { "signalId": "timebox_ship", "observed": "pos", "sensitivity": 0.8, "specificity": 0.8 }
+    ]
   },
   {
-    "name": "Cautious case",
-    "priorProjectSuccess": 20,
-    "problemEvidencePosterior": 55,
-    "deliveryCapability": 45
+    "name": "Weak signals",
+    "hypothesis": "This investment yields intended benefits",
+    "prior": 0.2,
+    "evidence": [
+      { "signalId": "repeat_usage", "observed": "pos", "sensitivity": 0.55, "specificity": 0.5 },
+      { "signalId": "invite_teammate", "observed": "pos", "sensitivity": 0.55, "specificity": 0.5 }
+    ]
   },
   {
-    "name": "Strong case",
-    "priorProjectSuccess": 20,
-    "problemEvidencePosterior": 94,
-    "deliveryCapability": 85
+    "name": "Strong signals",
+    "hypothesis": "This investment yields intended benefits",
+    "prior": 0.2,
+    "evidence": [
+      { "signalId": "partner_paid", "observed": "pos", "sensitivity": 0.8, "specificity": 0.95 },
+      { "signalId": "timebox_ship", "observed": "pos", "sensitivity": 0.85, "specificity": 0.85 }
+    ]
   }
 ]
