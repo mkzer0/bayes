@@ -3,27 +3,30 @@
     "name": "Default discovery case",
     "hypothesis": "This investment yields intended benefits",
     "prior": 0.2,
+    "threshold": 0.5,
     "evidence": [
-      { "signalId": "partner_paid", "observed": "pos", "sensitivity": 0.75, "specificity": 0.9 },
-      { "signalId": "timebox_ship", "observed": "pos", "sensitivity": 0.8, "specificity": 0.8 }
+      { "signalId": "partner_paid", "observed": "pos", "sensitivity": 0.75, "falsePositive": 0.1 },
+      { "signalId": "timebox_ship", "observed": "pos", "sensitivity": 0.8, "falsePositive": 0.2 }
     ]
   },
   {
     "name": "Weak signals",
     "hypothesis": "This investment yields intended benefits",
     "prior": 0.2,
+    "threshold": 0.5,
     "evidence": [
-      { "signalId": "repeat_usage", "observed": "pos", "sensitivity": 0.55, "specificity": 0.5 },
-      { "signalId": "invite_teammate", "observed": "pos", "sensitivity": 0.55, "specificity": 0.5 }
+      { "signalId": "repeat_usage", "observed": "pos", "sensitivity": 0.55, "falsePositive": 0.5 },
+      { "signalId": "invite_teammate", "observed": "pos", "sensitivity": 0.55, "falsePositive": 0.5 }
     ]
   },
   {
     "name": "Strong signals",
     "hypothesis": "This investment yields intended benefits",
     "prior": 0.2,
+    "threshold": 0.5,
     "evidence": [
-      { "signalId": "partner_paid", "observed": "pos", "sensitivity": 0.8, "specificity": 0.95 },
-      { "signalId": "timebox_ship", "observed": "pos", "sensitivity": 0.85, "specificity": 0.85 }
+      { "signalId": "partner_paid", "observed": "pos", "sensitivity": 0.8, "falsePositive": 0.05 },
+      { "signalId": "timebox_ship", "observed": "pos", "sensitivity": 0.85, "falsePositive": 0.15 }
     ]
   }
 ]

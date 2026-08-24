@@ -1,0 +1,202 @@
+{
+  "$comment": "Library of starting beliefs and signal strengths for the Bayesian Product Discovery demo. See docs/evidence.md for the full sourcing and the reasoning behind each number. Provenance is recorded per entry and is not decoration: 'published' entries trace to a named study with a sample size, 'anchored' entries are judgement calibrated against a published interpretation scale, and 'local' entries are placeholders for a number only your organisation can supply.",
+
+  "priors": [
+    {
+      "id": "experiment_mature",
+      "name": "A change to a mature, well-optimised product",
+      "value": 0.15,
+      "plausibleRange": [0.1, 0.33],
+      "provenance": "published",
+      "basis": "Optimizely: 12% of 127,000 experiments across ~1,100 companies won on the primary metric. Kohavi & Thomke report 10–20% of experiments producing positive results at Google, Bing and Microsoft. CXL/Convert: 20% of 28,304 experiments reached significance.",
+      "caveat": "These are per-experiment win rates on a chosen metric, not project success rates. Use for incremental changes to something already working and already tuned.",
+      "sources": [
+        "https://hbr.org/2017/09/the-surprising-power-of-online-experiments",
+        "https://www.conversionteam.com/ab-test-win-rate/"
+      ]
+    },
+    {
+      "id": "experiment_untuned",
+      "name": "A change to a younger or less-optimised product",
+      "value": 0.33,
+      "plausibleRange": [0.25, 0.4],
+      "provenance": "published",
+      "basis": "Kohavi's summary of 12 years of Microsoft A/B tests: roughly one third of ideas were positive and significant, one third flat, one third negative and significant. Bing, as a heavily optimised surface, sat far below this — the better-tuned the product, the lower the hit rate.",
+      "caveat": "The one-third rule is an average over a large, disciplined experimentation programme. Teams new to experimentation usually do worse, not better, because their weakest ideas were never filtered out.",
+      "sources": [
+        "https://kdd.org/exploration_files/v12-02-8-UR-Kohavi.pdf",
+        "https://hbr.org/2017/09/the-surprising-power-of-online-experiments"
+      ]
+    },
+    {
+      "id": "large_it_value",
+      "name": "A large IT programme delivering the value it promised",
+      "value": 0.2,
+      "plausibleRange": [0.1, 0.35],
+      "provenance": "published",
+      "basis": "McKinsey with the BT Centre for Major Programme Management at Oxford, 5,400+ IT projects over $15M: on average 45% over budget, 7% over schedule, and delivering 56% less value than predicted. Roughly half massively blow their budgets.",
+      "caveat": "The study measures value shortfall, not a binary success rate. The 0.2 is an interpretation of 'delivered close to what was promised', not a figure the study states.",
+      "sources": [
+        "https://www.mckinsey.com/capabilities/tech-and-ai/our-insights/delivering-large-scale-it-projects-on-time-on-budget-and-on-value"
+      ]
+    },
+    {
+      "id": "it_no_blowout",
+      "name": "An IT project avoiding a catastrophic overrun",
+      "value": 0.83,
+      "plausibleRange": [0.8, 0.85],
+      "provenance": "published",
+      "basis": "Flyvbjerg & Budzier, 1,471 IT projects: average cost overrun 27%, but one in six was a 'black swan' with a 200% average cost overrun and a ~70% schedule overrun.",
+      "caveat": "This is the base rate for avoiding ruin, not for succeeding. It is the right prior when the question is 'will this sink us', and the wrong one when the question is 'will this pay off'.",
+      "sources": [
+        "https://arxiv.org/abs/1304.0265"
+      ]
+    },
+    {
+      "id": "venture_survival_5y",
+      "name": "A new venture still trading after five years",
+      "value": 0.5,
+      "plausibleRange": [0.45, 0.55],
+      "provenance": "published",
+      "basis": "US Bureau of Labor Statistics business survival series: about 50% of private-sector businesses fail within five years; ~20% fail in year one; ~65% by year ten. The information sector is worse than average at ~53% failure by year five.",
+      "caveat": "Survival is a low bar and a poor proxy for the bet paying off. Many surviving businesses never delivered the thing that was funded.",
+      "sources": [
+        "https://www.lendingtree.com/business/small/failure-rate/"
+      ]
+    },
+    {
+      "id": "own_track_record",
+      "name": "Your own portfolio's historical hit rate",
+      "value": null,
+      "plausibleRange": null,
+      "provenance": "local",
+      "basis": "Take the last 20 bets your organisation funded that are now far enough along to judge. Count how many delivered the benefit named in the business case. That fraction is your prior, and it beats every number above.",
+      "caveat": "Judge them against what was claimed at funding time, not against a story rewritten afterwards. Teams that skip this step usually discover their real hit rate is well below the figure they had been assuming.",
+      "sources": []
+    }
+  ],
+
+  "signalStrengthBands": {
+    "$comment": "Jaeschke et al. (1994), Users' Guides to the Medical Literature, JAMA — the standard scale for reading a likelihood ratio. Used here to keep the invented numbers honest: pick the band you can defend, then read off rates that land in it.",
+    "bands": [
+      { "label": "Strong", "min": 10, "max": null, "meaning": "Large shift in belief. Reserve for signals that cost the other party real money or real risk." },
+      { "label": "Moderate", "min": 5, "max": 10, "meaning": "Meaningful shift. A costly behaviour, not a stated intention." },
+      { "label": "Weak", "min": 2, "max": 5, "meaning": "Small shift. Worth logging, not worth deciding on alone." },
+      { "label": "Negligible", "min": 1, "max": 2, "meaning": "Almost no shift. If your headline metric lives here, it is a vanity metric." }
+    ],
+    "source": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8086426/"
+  },
+
+  "signals": [
+    {
+      "id": "partner_paid",
+      "group": "Demand",
+      "name": "Design partner pays / signs for a pilot",
+      "sensitivity": 0.7,
+      "falsePositive": 0.06,
+      "impliedLR": 11.67,
+      "band": "Strong",
+      "provenance": "anchored",
+      "rationale": "Cash is the most expensive signal a buyer can send, so it is the least likely to appear in front of a failure. Rob Fitzpatrick's commitment-currency argument in The Mom Test: compliments are free, money is not."
+    },
+    {
+      "id": "switching",
+      "group": "Demand",
+      "name": "Users switch from current tool / workaround",
+      "sensitivity": 0.5,
+      "falsePositive": 0.08,
+      "impliedLR": 6.25,
+      "band": "Moderate",
+      "provenance": "anchored",
+      "rationale": "Abandoning an entrenched workaround costs the user time and social capital. Sensitivity is only moderate because plenty of successful products coexist with the old tool for a long time."
+    },
+    {
+      "id": "concierge_workflow",
+      "group": "Demand",
+      "name": "Users complete the workflow (even via concierge)",
+      "sensitivity": 0.65,
+      "falsePositive": 0.18,
+      "impliedLR": 3.6,
+      "band": "Weak",
+      "provenance": "anchored",
+      "rationale": "Completing real work beats clicking. Discounted because concierge delivery hides the effort the real product must automate, and novelty inflates early completion."
+    },
+    {
+      "id": "partner_loi",
+      "group": "Demand",
+      "name": "Design partner signs LOI (non-binding commitment)",
+      "sensitivity": 0.6,
+      "falsePositive": 0.32,
+      "impliedLR": 1.88,
+      "band": "Negligible",
+      "provenance": "anchored",
+      "rationale": "Deliberately set just below the vanity line. A non-binding LOI costs a signature; failed projects collect them too. The contrast with the paid-pilot row is the point — same customer, same enthusiasm, six times the weight of evidence."
+    },
+    {
+      "id": "onboarding_data",
+      "group": "Adoption",
+      "name": "User onboards + shares real data",
+      "sensitivity": 0.6,
+      "falsePositive": 0.2,
+      "impliedLR": 3.0,
+      "band": "Weak",
+      "provenance": "anchored",
+      "rationale": "Handing over real data carries procurement and privacy cost, so it is harder to fake than a signup. Still routinely present in projects that later die on retention."
+    },
+    {
+      "id": "repeat_usage",
+      "group": "Adoption",
+      "name": "Repeat usage within a week (retention proxy)",
+      "sensitivity": 0.6,
+      "falsePositive": 0.2,
+      "impliedLR": 3.0,
+      "band": "Weak",
+      "provenance": "anchored",
+      "rationale": "A flattening retention curve is the single most cited behavioural marker of fit, but one week is far too short to see one. Rated as a weak early proxy; raise it once you can see a curve flatten at week 4–8."
+    },
+    {
+      "id": "invite_teammate",
+      "group": "Adoption",
+      "name": "User invites a teammate (spread inside account)",
+      "sensitivity": 0.45,
+      "falsePositive": 0.12,
+      "impliedLR": 3.75,
+      "band": "Weak",
+      "provenance": "anchored",
+      "rationale": "Putting your name behind a tool to a colleague costs reputation, so false positives are lowish. Sensitivity is low because many genuinely successful B2B products never spread this way."
+    },
+    {
+      "id": "timebox_ship",
+      "group": "Delivery",
+      "name": "Ship a thin slice to prod within the timebox",
+      "sensitivity": 0.8,
+      "falsePositive": 0.3,
+      "impliedLR": 2.67,
+      "band": "Weak",
+      "provenance": "anchored",
+      "rationale": "Capability evidence, not demand evidence. Most successes can ship; so can plenty of teams who then ship the wrong thing. Useful mainly as a check that delivery risk is not the binding constraint."
+    },
+    {
+      "id": "cycle_time",
+      "group": "Delivery",
+      "name": "Cycle time improves (lead time down)",
+      "sensitivity": 0.6,
+      "falsePositive": 0.45,
+      "impliedLR": 1.33,
+      "band": "Negligible",
+      "provenance": "anchored",
+      "rationale": "Deliberately parked below the vanity line. Cycle time is a real operational metric and a poor test of whether a bet pays off — teams routinely get faster at building something nobody wants."
+    },
+    {
+      "id": "support_load",
+      "group": "Quality",
+      "name": "Support load stays manageable after release",
+      "sensitivity": 0.7,
+      "falsePositive": 0.5,
+      "impliedLR": 1.4,
+      "band": "Negligible",
+      "provenance": "anchored",
+      "rationale": "A hygiene check, not a demand test. Quiet support queues are equally consistent with a healthy product and with a product nobody is using."
+    }
+  ]
+}

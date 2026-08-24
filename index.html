@@ -13,6 +13,11 @@
       --line: #dddddd;
       --soft: #f6f6f6;
       --accent: #111111;
+      --warn: #a86a00;
+      --warnBg: #fff8ea;
+      --warnLine: #f0dfba;
+      --pos: #147a42;
+      --neg: #b53737;
     }
 
     * { box-sizing: border-box; }
@@ -98,9 +103,125 @@
 
     .summary {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 12px;
       margin: 14px 0 18px;
+    }
+
+    .notice {
+      margin: 0 0 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--warnLine);
+      border-left: 4px solid var(--warn);
+      border-radius: 10px;
+      background: var(--warnBg);
+      font-size: 0.94rem;
+    }
+
+    .notice[hidden] { display: none; }
+
+    .notice .noticeTitle {
+      font-weight: 800;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .verdictYes { color: var(--pos); }
+    .verdictNo { color: var(--neg); }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: var(--muted);
+      vertical-align: middle;
+    }
+
+    .badge.published { border-color: #bcd8c6; background: #f1f8f3; color: var(--pos); }
+    .badge.anchored { border-color: var(--warnLine); background: var(--warnBg); color: var(--warn); }
+    .badge.local { border-color: var(--line); background: var(--soft); color: var(--muted); }
+
+    .bandTag {
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .bandStrong { color: var(--pos); }
+    .bandModerate { color: var(--fg); }
+    .bandWeak { color: var(--muted); }
+    .bandNegligible { color: var(--neg); }
+
+    .libPanel {
+      grid-column: 1 / -1;
+      margin-top: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--soft);
+      font-size: 0.92rem;
+    }
+
+    .libPanel[hidden] { display: none; }
+
+    .compareGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 10px 0;
+    }
+
+    .compareCell {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .compareCell .who {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      font-weight: 800;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .libLink { color: var(--muted); font-size: 0.86rem; }
+
+    .rowMeta {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+    }
+
+    .rowMeta button {
+      border-radius: 999px;
+      padding: 6px 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--fg);
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+
+    .rowMeta button:hover { border-color: var(--fg); }
+
+    .footnote {
+      color: var(--muted);
+      font-size: 0.9rem;
     }
 
     .card {
@@ -260,7 +381,7 @@
     th { font-size: 0.9rem; }
 
     @media (max-width: 760px) {
-      .controls, .summary { grid-template-columns: 1fr; }
+      .controls { grid-template-columns: 1fr; }
       #chart { height: 420px; }
       .row { grid-template-columns: 1fr; }
       .rowActions { padding-top: 0; }
@@ -274,34 +395,48 @@
       Vanity metrics feel like control. They don’t make decisions easier.
     </p>
     <p class="lead">
-      This tool is for disciplined mind-changing: start with an outside-view prior, then update it when a real test comes back.
+      This tool is for disciplined mind-changing: start with an outside-view belief, then update it when a real test comes back.
     </p>
     <p class="lead">
-      Each row is one binary test. Pick what happened (positive / negative), then enter the test’s
-      <span class="mono">sensitivity</span> (true positive rate) and <span class="mono">specificity</span> (true negative rate).
+      Each row below is one test. Say what happened, then answer two questions about that signal: how often
+      you would see it if the bet were <strong>working</strong>, and how often you would see it <strong>anyway</strong>
+      if the bet were failing. The gap between those two numbers is all the evidence you actually have.
     </p>
 
     <section class="controls" aria-label="Inputs">
+      <div style="grid-column: 1 / -1;">
+        <label for="hypothesisText" style="margin-bottom: 6px;">The bet</label>
+        <span class="hint">In plain English, what are you claiming will happen?</span>
+        <input id="hypothesisText" type="text" placeholder="e.g. “This investment yields intended benefits”" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;" />
+      </div>
+
       <label for="priorRange">
-        Step 1 — Prior \(P(H)\) (Outside View) <span class="value mono" id="priorValue">0.2</span>
-        <span class="hint">Baseline success rate from a reference class (your outside view).</span>
+        Step 1 — Starting belief <span class="value mono" id="priorValue">0.2</span>
+        <span class="hint">Before any evidence: out of comparable projects you have seen, what share actually worked? Use that base rate, not your enthusiasm for this one.</span>
         <input id="priorRange" type="range" min="0" max="1" step="0.01" value="0.20" />
-        <span class="hint">Or type a value in \([0,1]\).</span>
         <input id="priorNumber" type="number" min="0" max="1" step="0.01" value="0.20" inputmode="decimal" />
       </label>
 
-      <div>
-        <label for="hypothesisText" style="margin-bottom: 6px;">Hypothesis \(H\)</label>
-        <span class="hint">Plain-English hypothesis you’re investing in.</span>
-        <input id="hypothesisText" type="text" placeholder="e.g. “This project succeeds”" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;" />
+      <div id="priorLibraryWrap" hidden>
+        <label for="priorClass" style="margin-bottom: 6px;">Reference class (optional)</label>
+        <span class="hint">Argue your own number first. Then check it against a published base rate — the gap is worth a conversation.</span>
+        <select id="priorClass" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;"></select>
+        <div id="priorEvidence" class="libPanel" style="grid-column:auto;" hidden></div>
       </div>
+
+      <label for="thresholdRange">
+        Step 2 — Decision threshold <span class="value mono" id="thresholdValue">0.5</span>
+        <span class="hint">We commit if the belief ends up above this. Set it <strong>now</strong>, before you look at any evidence — deciding the bar afterwards is how a model becomes a rationalisation.</span>
+        <input id="thresholdRange" type="range" min="0" max="1" step="0.01" value="0.50" />
+        <input id="thresholdNumber" type="number" min="0" max="1" step="0.01" value="0.50" inputmode="decimal" />
+      </label>
     </section>
 
     <section class="evidence" aria-label="Evidence list">
       <div class="evidenceHeader">
         <div>
-          <span class="title">Step 2 — Signals (tests)</span>
-          <span class="subtitle">Add tests that would actually change a decision</span>
+          <span class="title">Step 3 — Signals (tests)</span>
+          <span class="subtitle">New signals start at 0.5 / 0.5 — worth nothing until you argue otherwise</span>
         </div>
         <div class="actions" style="margin:0;">
           <button id="addEvidence" class="secondary">Add evidence</button>
@@ -318,52 +453,78 @@
 
     <section class="summary" aria-label="Summary">
       <div class="card">
-        <div class="kicker">Prior</div>
+        <div class="kicker">Starting belief</div>
         <div class="big mono" id="priorCard">0.20</div>
       </div>
       <div class="card">
-        <div class="kicker">Posterior (after last test)</div>
+        <div class="kicker">Belief after evidence</div>
         <div class="big mono" id="posteriorCard">—</div>
       </div>
       <div class="card">
-        <div class="kicker">Number of tests</div>
-        <div class="big mono" id="stepsCard">0</div>
+        <div class="kicker">Decision threshold</div>
+        <div class="big mono" id="thresholdCard">0.50</div>
+      </div>
+      <div class="card">
+        <div class="kicker">Verdict</div>
+        <div class="big" id="verdictCard">—</div>
       </div>
     </section>
 
-    <div id="chart" aria-label="Bayesian update chart"></div>
+    <div id="independenceNotice" class="notice" role="status" hidden></div>
 
-    <h2>Steps</h2>
-    <table aria-label="Posterior table">
+    <div id="chart" aria-label="Belief update chart"></div>
+
+    <h2>Step 4 — How the belief moved</h2>
+    <table aria-label="Update table">
       <thead>
         <tr>
           <th>Step</th>
-          <th>Observed</th>
-          <th>Sensitivity \(P(E^+\mid H)\)</th>
-          <th>Specificity \(P(E^-\mid \neg H)\)</th>
-          <th>LR (observed)</th>
-          <th>\(P(H)\) after update</th>
+          <th>What happened</th>
+          <th>If it works, we’d see it</th>
+          <th>If it fails, we’d see it anyway</th>
+          <th>Weight of evidence</th>
+          <th>Belief after</th>
         </tr>
       </thead>
       <tbody id="stepsTableBody"></tbody>
     </table>
 
-    <h2>Step 3 — Posterior (Update)</h2>
-    <div class="formula mono">P(H|E) = (P(H)·P(E|H)) / (P(H)·P(E|H) + (1−P(H))·P(E|¬H))</div>
+    <p class="footnote">
+      <strong>Weight of evidence</strong> is the ratio of those two columns. Above 1 the belief rises;
+      below 1 it falls; at roughly 1 the signal told you nothing, however good it felt. That is the
+      working definition of a vanity metric.
+    </p>
+
+    <h2>How the update works</h2>
+    <p>
+      Each test takes the belief you walked in with and re-weighs it by how much better the signal
+      predicts success than failure. The result becomes the starting belief for the next test.
+    </p>
+    <div class="formula mono">belief after = (belief × chance if it works) ÷ (belief × chance if it works + (1 − belief) × chance if it fails)</div>
+    <p class="footnote">
+      In standard notation: P(H|E) = P(H)·P(E|H) / [ P(H)·P(E|H) + (1−P(H))·P(E|¬H) ].
+      The first column of the table is the sensitivity P(E+|H); the second is the false positive rate
+      P(E+|¬H), which is 1 − specificity.
+    </p>
   </main>
 
   <script>
     const priorRange = document.getElementById('priorRange');
     const priorNumber = document.getElementById('priorNumber');
+    const thresholdRange = document.getElementById('thresholdRange');
+    const thresholdNumber = document.getElementById('thresholdNumber');
     const hypothesisText = document.getElementById('hypothesisText');
     const evidenceList = document.getElementById('evidenceList');
     const stepsTableBody = document.getElementById('stepsTableBody');
+    const independenceNotice = document.getElementById('independenceNotice');
 
     const ids = {
       priorValue: document.getElementById('priorValue'),
+      thresholdValue: document.getElementById('thresholdValue'),
       priorCard: document.getElementById('priorCard'),
       posteriorCard: document.getElementById('posteriorCard'),
-      stepsCard: document.getElementById('stepsCard')
+      thresholdCard: document.getElementById('thresholdCard'),
+      verdictCard: document.getElementById('verdictCard')
     };
 
     function clamp01(n) {
@@ -371,8 +532,8 @@
       return Math.max(0, Math.min(1, n));
     }
 
-    function applyRateUpdate(k, setSensitivity, setSpecificity, els) {
-      const { sensRange, sensNum, specRange, specNum } = els;
+    function applyRateUpdate(k, setSensitivity, setFalsePositive, els) {
+      const { sensRange, sensNum, fpRange, fpNum } = els;
       switch (k) {
         case 'sensRange':
           setSensitivity(Number(sensRange.value));
@@ -380,20 +541,25 @@
         case 'sensNum':
           setSensitivity(Number(sensNum.value));
           break;
-        case 'specRange':
-          setSpecificity(Number(specRange.value));
+        case 'fpRange':
+          setFalsePositive(Number(fpRange.value));
           break;
-        case 'specNum':
-          setSpecificity(Number(specNum.value));
+        case 'fpNum':
+          setFalsePositive(Number(fpNum.value));
           break;
         default:
           break;
       }
     }
 
+    // Two decimals: the inputs are judgement calls, so more digits would only
+    // dress up a guess. Very small and very large values are labelled rather
+    // than rounded to 0 or 1, which would read as impossible or certain.
     function fmt01(n) {
       if (!Number.isFinite(n)) return '—';
-      return n.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+      if (n > 0 && n < 0.005) return '<0.01';
+      if (n < 1 && n > 0.995) return '>0.99';
+      return n.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
     }
 
     function bayesUpdate(p, pEgH, pEgNotH) {
@@ -437,6 +603,96 @@
       return hit ? hit.name : '';
     }
 
+    function signalGroupById(id) {
+      const hit = SIGNALS.find(s => s.id === id);
+      return hit ? hit.group : '';
+    }
+
+    // The library of published base rates and anchored signal strengths lives in
+    // data/library.json. It enriches the page but is never required: if the fetch
+    // fails the tool works exactly as it did before, minus the compare panels.
+    let LIBRARY = null;
+
+    function librarySignal(id) {
+      if (!LIBRARY) return null;
+      return LIBRARY.signals.find(s => s.id === id) ?? null;
+    }
+
+    // Bands come from Jaeschke et al. (1994). The epsilon matters: 0.7/0.07 is
+    // 9.999999999999998 in floating point, which would silently demote a strong
+    // signal to moderate.
+    function bandFor(lr) {
+      if (!LIBRARY || !Number.isFinite(lr)) return null;
+      for (const b of LIBRARY.signalStrengthBands.bands) {
+        if (lr >= b.min - 1e-9 && (b.max === null || lr < b.max - 1e-9)) return b;
+      }
+      return lr >= 1 ? null : { label: 'Against', meaning: 'This observation is evidence the bet is not working.' };
+    }
+
+    function bandTag(lr) {
+      const b = bandFor(lr);
+      if (!b) return '';
+      return `<span class="bandTag band${b.label}">${b.label}</span>`;
+    }
+
+    async function loadLibrary() {
+      try {
+        const res = await fetch('data/library.json');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        LIBRARY = await res.json();
+      } catch (err) {
+        console.warn('Library unavailable, continuing without it:', err);
+        return;
+      }
+      buildPriorPicker();
+      renderEvidence();
+      update();
+    }
+
+    function buildPriorPicker() {
+      const wrap = document.getElementById('priorLibraryWrap');
+      const sel = document.getElementById('priorClass');
+      sel.innerHTML = [
+        '<option value="">Compare with a published base rate…</option>',
+        ...LIBRARY.priors.map(p => `<option value="${p.id}">${p.name}</option>`)
+      ].join('');
+      wrap.hidden = false;
+      sel.addEventListener('change', renderPriorEvidence);
+    }
+
+    function renderPriorEvidence() {
+      if (!LIBRARY) return;
+      const sel = document.getElementById('priorClass');
+      const panel = document.getElementById('priorEvidence');
+      const p = LIBRARY.priors.find(x => x.id === sel.value);
+      if (!p) {
+        panel.hidden = true;
+        panel.innerHTML = '';
+        return;
+      }
+      const sources = p.sources.map(u => `<a class="libLink" href="${u}" target="_blank" rel="noopener">source</a>`).join(' · ');
+      const yours = fmt01(readPrior());
+      const adopt = p.value === null
+        ? `<p class="hint" style="margin:8px 0 0;">No published number applies here — this one you have to count yourself.</p>`
+        : `<div class="rowMeta" style="grid-column:auto;">
+             <span>Published: <strong class="mono">${fmt01(p.value)}</strong> · yours: <strong class="mono">${yours}</strong></span>
+             <button type="button" data-action="adoptPrior" data-value="${p.value}">Adopt ${fmt01(p.value)}</button>
+           </div>`;
+      panel.hidden = false;
+      panel.innerHTML = `
+        <div><span class="badge ${p.provenance}">${p.provenance}</span> <strong>${p.name}</strong></div>
+        <p style="margin:8px 0 6px;">${p.basis}</p>
+        <p class="hint" style="margin:0;"><strong>Caveat.</strong> ${p.caveat} ${sources}</p>
+        ${adopt}
+      `;
+      const btn = panel.querySelector('button[data-action="adoptPrior"]');
+      if (btn) btn.addEventListener('click', () => {
+        setPrior(Number(btn.dataset.value));
+        update();
+        renderPriorEvidence();
+      });
+    }
+
     let evidence = [];
 
     function setPrior(p) {
@@ -447,6 +703,16 @@
 
     function readPrior() {
       return clamp01(Number(priorNumber.value));
+    }
+
+    function setThreshold(t) {
+      const v = clamp01(t);
+      thresholdRange.value = String(v);
+      thresholdNumber.value = String(v);
+    }
+
+    function readThreshold() {
+      return clamp01(Number(thresholdNumber.value));
     }
 
     function makeEvidenceRow(e, index) {
@@ -481,12 +747,12 @@
       const observedField = document.createElement('div');
       observedField.className = 'field';
       observedField.innerHTML = `
-        <label>Observed</label>
-        <span class="hint">What happened in the test.</span>
+        <label>What happened</label>
+        <span class="hint">The result of the test, as observed.</span>
         <div class="mini" style="grid-template-columns: 1fr;">
           <select data-k="observed" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;">
-            <option value="pos">Positive (E+)</option>
-            <option value="neg">Negative (E-)</option>
+            <option value="pos">We saw it</option>
+            <option value="neg">We didn’t see it</option>
           </select>
         </div>
       `;
@@ -512,8 +778,8 @@
       const pEgHField = document.createElement('div');
       pEgHField.className = 'field';
       pEgHField.innerHTML = `
-        <label>Sensitivity</label>
-        <span class="hint">(P(E+|H)) If we’re going to succeed, how often do we see this?</span>
+        <label>If it works, we’d see it</label>
+        <span class="hint">Out of the bets like this that <strong>succeed</strong>, how often does this signal show up? Higher is better.</span>
         <div class="mini">
           <input data-k="sensRange" type="range" min="0" max="1" step="0.01" value="${String(clamp01(e.sensitivity))}" />
           <input data-k="sensNum" type="number" min="0" max="1" step="0.01" value="${String(clamp01(e.sensitivity))}" inputmode="decimal" />
@@ -523,11 +789,11 @@
       const pEgNotHField = document.createElement('div');
       pEgNotHField.className = 'field';
       pEgNotHField.innerHTML = `
-        <label>Specificity</label>
-        <span class="hint">(P(E-|¬H)) If we’re going to fail, how often do we NOT see this?</span>
+        <label>If it fails, we’d see it anyway</label>
+        <span class="hint">Out of the bets like this that <strong>fail</strong>, how often does this signal show up regardless? Lower is better — this is the vanity check.</span>
         <div class="mini">
-          <input data-k="specRange" type="range" min="0" max="1" step="0.01" value="${String(clamp01(e.specificity))}" />
-          <input data-k="specNum" type="number" min="0" max="1" step="0.01" value="${String(clamp01(e.specificity))}" inputmode="decimal" />
+          <input data-k="fpRange" type="range" min="0" max="1" step="0.01" value="${String(clamp01(e.falsePositive))}" />
+          <input data-k="fpNum" type="number" min="0" max="1" step="0.01" value="${String(clamp01(e.falsePositive))}" inputmode="decimal" />
         </div>
       `;
 
@@ -535,7 +801,21 @@
       actions.className = 'rowActions';
       actions.innerHTML = `<button data-action="remove" type="button">Remove</button>`;
 
-      row.append(labelField, observedField, pEgHField, pEgNotHField, actions);
+      // Live strength readout plus the library comparison. The comparison is
+      // opt-in and never auto-fills: the team commits to its own estimate
+      // first, and the gap between the two is the part worth discussing.
+      const meta = document.createElement('div');
+      meta.className = 'rowMeta';
+      meta.innerHTML = `
+        <span>Weight of evidence: <strong class="mono" data-role="rowLR">—</strong> <span data-role="rowBand"></span></span>
+        <button type="button" data-action="compare" hidden>Compare with the library</button>
+      `;
+
+      const libPanel = document.createElement('div');
+      libPanel.className = 'libPanel';
+      libPanel.hidden = true;
+
+      row.append(labelField, observedField, pEgHField, pEgNotHField, actions, meta, libPanel);
 
       function updateRowFromInputs(t) {
         if (!(t instanceof HTMLElement)) return;
@@ -547,8 +827,8 @@
         const observedSelect = row.querySelector('select[data-k="observed"]');
         const sensRange = row.querySelector('input[data-k="sensRange"]');
         const sensNum = row.querySelector('input[data-k="sensNum"]');
-        const specRange = row.querySelector('input[data-k="specRange"]');
-        const specNum = row.querySelector('input[data-k="specNum"]');
+        const fpRange = row.querySelector('input[data-k="fpRange"]');
+        const fpNum = row.querySelector('input[data-k="fpNum"]');
 
         if (
           !(signalSelect instanceof HTMLSelectElement) ||
@@ -556,8 +836,8 @@
           !(observedSelect instanceof HTMLSelectElement) ||
           !(sensRange instanceof HTMLInputElement) ||
           !(sensNum instanceof HTMLInputElement) ||
-          !(specRange instanceof HTMLInputElement) ||
-          !(specNum instanceof HTMLInputElement)
+          !(fpRange instanceof HTMLInputElement) ||
+          !(fpNum instanceof HTMLInputElement)
         ) return;
 
         const setSensitivity = (v) => {
@@ -565,10 +845,10 @@
           sensRange.value = String(vv);
           sensNum.value = String(vv);
         };
-        const setSpecificity = (v) => {
+        const setFalsePositive = (v) => {
           const vv = clamp01(v);
-          specRange.value = String(vv);
-          specNum.value = String(vv);
+          fpRange.value = String(vv);
+          fpNum.value = String(vv);
         };
 
         const k = t.dataset ? t.dataset.k : undefined;
@@ -577,14 +857,14 @@
           if (signalSelect.value !== 'custom') customLabelInput.value = '';
         }
 
-        applyRateUpdate(k, setSensitivity, setSpecificity, { sensRange, sensNum, specRange, specNum });
+        applyRateUpdate(k, setSensitivity, setFalsePositive, { sensRange, sensNum, fpRange, fpNum });
 
         evidence[i] = {
           signalId: signalSelect.value,
           customLabel: customLabelInput.value,
           observed: observedSelect.value === 'neg' ? 'neg' : 'pos',
           sensitivity: clamp01(Number(sensNum.value)),
-          specificity: clamp01(Number(specNum.value))
+          falsePositive: clamp01(Number(fpNum.value))
         };
       }
 
@@ -594,17 +874,79 @@
         update();
       });
 
+      // Own estimate on the left, library on the right, never merged silently.
+      function renderCompare() {
+        const i = Number(row.dataset.index);
+        const e2 = evidence[i];
+        const lib = e2 ? librarySignal(e2.signalId) : null;
+        if (!lib) return;
+        const ourLR = e2.falsePositive > 0 ? e2.sensitivity / e2.falsePositive : Number.POSITIVE_INFINITY;
+        const same = e2.sensitivity === lib.sensitivity && e2.falsePositive === lib.falsePositive;
+        libPanel.hidden = false;
+        libPanel.innerHTML = `
+          <div class="compareGrid">
+            <div class="compareCell">
+              <div class="who">Your estimate</div>
+              <div class="mono">${fmt01(e2.sensitivity)} if it works · ${fmt01(e2.falsePositive)} anyway</div>
+              <div style="margin-top:4px;">Weight <strong class="mono">${fmtLR(ourLR)}</strong> ${bandTag(ourLR)}</div>
+            </div>
+            <div class="compareCell">
+              <div class="who">Library <span class="badge ${lib.provenance}">${lib.provenance}</span></div>
+              <div class="mono">${fmt01(lib.sensitivity)} if it works · ${fmt01(lib.falsePositive)} anyway</div>
+              <div style="margin-top:4px;">Weight <strong class="mono">${fmtLR(lib.impliedLR)}</strong> ${bandTag(lib.impliedLR)}</div>
+            </div>
+          </div>
+          <p style="margin:0 0 8px;">${lib.rationale}</p>
+          <p class="hint" style="margin:0;">
+            This is a judgement calibrated against a published scale, not a measurement. If you can defend
+            your own number, keep it — and write down why.
+          </p>
+          <div class="rowMeta">
+            <button type="button" data-action="adoptSignal" ${same ? 'disabled' : ''}>${same ? 'Same as yours' : 'Adopt the library values'}</button>
+            <button type="button" data-action="hideCompare">Hide</button>
+          </div>
+        `;
+      }
+
       row.addEventListener('click', (ev) => {
         const t = ev.target;
         if (!(t instanceof HTMLElement)) return;
+        const i = Number(row.dataset.index);
+        if (!Number.isFinite(i)) return;
+
         if (t.dataset.action === 'remove') {
-          const i = Number(row.dataset.index);
-          if (!Number.isFinite(i)) return;
           evidence.splice(i, 1);
+          renderEvidence();
+          update();
+        } else if (t.dataset.action === 'compare') {
+          renderCompare();
+        } else if (t.dataset.action === 'hideCompare') {
+          libPanel.hidden = true;
+        } else if (t.dataset.action === 'adoptSignal') {
+          const lib = librarySignal(evidence[i].signalId);
+          if (!lib) return;
+          evidence[i].sensitivity = lib.sensitivity;
+          evidence[i].falsePositive = lib.falsePositive;
           renderEvidence();
           update();
         }
       });
+
+      // Reflect the row's own strength as the sliders move, so the Jaeschke
+      // bands are learned by repetition rather than looked up.
+      row.refreshMeta = () => {
+        const i = Number(row.dataset.index);
+        const e2 = evidence[i];
+        if (!e2) return;
+        const lr = e2.falsePositive > 0 ? e2.sensitivity / e2.falsePositive : Number.POSITIVE_INFINITY;
+        const lrEl = meta.querySelector('[data-role="rowLR"]');
+        const bandEl = meta.querySelector('[data-role="rowBand"]');
+        const cmpBtn = meta.querySelector('button[data-action="compare"]');
+        if (lrEl) lrEl.textContent = fmtLR(lr);
+        if (bandEl) bandEl.innerHTML = bandTag(lr);
+        if (cmpBtn) cmpBtn.hidden = !librarySignal(e2.signalId);
+        if (!libPanel.hidden) renderCompare();
+      };
 
       return row;
     }
@@ -612,13 +954,54 @@
     function renderEvidence() {
       evidenceList.innerHTML = '';
       evidence.forEach((e, i) => evidenceList.appendChild(makeEvidenceRow(e, i)));
-      ids.stepsCard.textContent = String(evidence.length);
+      refreshRowMeta();
+    }
+
+    function refreshRowMeta() {
+      for (const row of evidenceList.children) {
+        if (typeof row.refreshMeta === 'function') row.refreshMeta();
+      }
+    }
+
+    // Chaining updates assumes each test is independent evidence given the
+    // hypothesis. Signals from the same family usually are not: one keen
+    // customer can trip three Demand signals at once, and the chain will read
+    // that as three confirmations.
+    function crowdedGroups() {
+      const counts = new Map();
+      for (const e of evidence) {
+        const group = signalGroupById(e.signalId);
+        if (!group) continue;
+        counts.set(group, (counts.get(group) ?? 0) + 1);
+      }
+      return [...counts.entries()].filter(([, n]) => n >= 2).map(([group]) => group);
+    }
+
+    function renderIndependenceNotice() {
+      const groups = crowdedGroups();
+      if (groups.length === 0) {
+        independenceNotice.hidden = true;
+        independenceNotice.innerHTML = '';
+        return;
+      }
+      const list = groups.length === 1
+        ? `<strong>${groups[0]}</strong>`
+        : groups.map(g => `<strong>${g}</strong>`).join(' and ');
+      independenceNotice.hidden = false;
+      independenceNotice.innerHTML = `
+        <span class="noticeTitle">These signals may be counting the same thing twice</span>
+        You have more than one signal from ${list}. Each update assumes the next test is
+        <em>independent</em> evidence — a genuinely separate look at the world. Two signals from the
+        same customer, or the same week, are usually one signal wearing two hats, and chaining them
+        will overstate your confidence. Drop one, or raise its “we’d see it anyway” rate to reflect
+        the overlap.
+      `;
     }
 
     function computeChain() {
       const prior = readPrior();
       const steps = [
-        { step: 'Prior', p: prior, observed: '', sensitivity: Number.NaN, specificity: Number.NaN, pEgH: Number.NaN, pEgNotH: Number.NaN, label: 'Prior' }
+        { step: 'Start', p: prior, observed: '', sensitivity: Number.NaN, falsePositive: Number.NaN, pEgH: Number.NaN, pEgNotH: Number.NaN, label: 'Starting belief' }
       ];
 
       let current = prior;
@@ -629,19 +1012,19 @@
           label = (e.customLabel && e.customLabel.trim()) ? e.customLabel.trim() : `Custom signal ${i + 1}`;
         }
         const observed = e.observed === 'neg' ? 'neg' : 'pos';
-        const sens = clamp01(e.sensitivity); // P(E+|H)
-        const spec = clamp01(e.specificity); // P(E-|¬H)
-        const pPosNotH = clamp01(1 - spec); // false positive rate = P(E+|¬H)
-        const pNegH = clamp01(1 - sens);    // false negative rate = P(E-|H)
+        const sens = clamp01(e.sensitivity);      // P(E+|H)  — seen when it works
+        const fp = clamp01(e.falsePositive);      // P(E+|¬H) — seen anyway when it fails
+        const spec = clamp01(1 - fp);             // P(E-|¬H) — not seen when it fails
+        const pNegH = clamp01(1 - sens);          // P(E-|H)  — missed when it works
         const pEgH = observed === 'pos' ? sens : pNegH;
-        const pEgNotH = observed === 'pos' ? pPosNotH : spec;
+        const pEgNotH = observed === 'pos' ? fp : spec;
         const next = Number.isFinite(current) ? bayesUpdate(current, pEgH, pEgNotH) : Number.NaN;
         steps.push({
-          step: `E${i + 1}`,
+          step: `Test ${i + 1}`,
           p: next,
           observed,
           sensitivity: sens,
-          specificity: spec,
+          falsePositive: fp,
           pEgH,
           pEgNotH,
           label
@@ -658,15 +1041,16 @@
         const s = steps[i];
         const tr = document.createElement('tr');
         let observed = '—';
-        if (i !== 0) observed = s.observed === 'neg' ? 'E-' : 'E+';
+        if (i !== 0) observed = s.observed === 'neg' ? 'Didn’t see it' : 'Saw it';
         const sens = Number.isFinite(s.sensitivity) ? fmt01(s.sensitivity) : '—';
-        const spec = Number.isFinite(s.specificity) ? fmt01(s.specificity) : '—';
-        const lr = i === 0 ? '—' : fmtLR(likelihoodRatio(s.pEgH, s.pEgNotH));
+        const fp = Number.isFinite(s.falsePositive) ? fmt01(s.falsePositive) : '—';
+        const lrValue = i === 0 ? Number.NaN : likelihoodRatio(s.pEgH, s.pEgNotH);
+        const lr = i === 0 ? '—' : `${fmtLR(lrValue)} ${bandTag(lrValue)}`;
         tr.innerHTML = `
           <td><span class="mono">${s.step}</span> ${i === 0 ? '' : `<span style="color:var(--muted);font-size:0.9rem">(${s.label.replaceAll('<', '&lt;')})</span>`}</td>
-          <td class="mono">${observed}</td>
+          <td>${observed}</td>
           <td class="mono">${sens}</td>
-          <td class="mono">${spec}</td>
+          <td class="mono">${fp}</td>
           <td class="mono">${lr}</td>
           <td class="mono">${fmt01(s.p)}</td>
         `;
@@ -674,16 +1058,14 @@
       }
     }
 
-    function renderChart(steps) {
-      const labels = steps.map((s, i) => i === 0 ? 'Prior' : s.step);
+    function renderChart(steps, threshold) {
+      const labels = steps.map((s, i) => i === 0 ? 'Start' : s.step);
       const values = steps.map(s => s.p);
       const hover = steps.map((s, i) => {
-        if (i === 0) return `Prior P(H) = ${fmt01(s.p)}`;
+        if (i === 0) return `Starting belief = ${fmt01(s.p)}`;
         const lr = likelihoodRatio(s.pEgH, s.pEgNotH);
-        const obs = s.observed === 'neg' ? 'E-' : 'E+';
-        const fp = clamp01(1 - s.specificity);
-        const fn = clamp01(1 - s.sensitivity);
-        return `${s.label}\nObserved: ${obs}\nSensitivity P(E+|H)=${fmt01(s.sensitivity)}\nSpecificity P(E-|¬H)=${fmt01(s.specificity)}\n(FP=${fmt01(fp)}, FN=${fmt01(fn)})\nLR(observed)=${fmtLR(lr)}\nPosterior P(H)=${fmt01(s.p)}`;
+        const obs = s.observed === 'neg' ? 'Didn’t see it' : 'Saw it';
+        return `${s.label}\n${obs}\nIf it works, we’d see it: ${fmt01(s.sensitivity)}\nIf it fails, we’d see it anyway: ${fmt01(s.falsePositive)}\nWeight of evidence: ${fmtLR(lr)}\nBelief after: ${fmt01(s.p)}`;
       });
 
       const traceLine = {
@@ -698,10 +1080,33 @@
         name: 'Posterior'
       };
 
+      const pointLabels = labels.map((lab, i) => {
+        const v = values[i];
+        if (!Number.isFinite(v)) return null;
+        return {
+          x: lab,
+          y: Math.min(1, v + 0.06),
+          text: fmt01(v),
+          showarrow: false,
+          font: { size: 13, color: '#111111' }
+        };
+      }).filter(Boolean);
+
+      const thresholdLabel = {
+        xref: 'paper',
+        x: 1,
+        xanchor: 'right',
+        y: threshold,
+        yanchor: threshold > 0.9 ? 'top' : 'bottom',
+        text: `commit above ${fmt01(threshold)}`,
+        showarrow: false,
+        font: { size: 12, color: '#5f6368' }
+      };
+
       const layout = {
         margin: { l: 56, r: 24, t: 24, b: 58 },
         yaxis: {
-          title: 'Posterior probability',
+          title: 'Belief the bet pays off',
           range: [0, 1],
           tickformat: '.2f',
           gridcolor: '#e6e6e6',
@@ -714,17 +1119,17 @@
         plot_bgcolor: '#ffffff',
         paper_bgcolor: '#ffffff',
         font: { family: 'system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif', color: '#111111' },
-        annotations: labels.map((lab, i) => {
-          const v = values[i];
-          if (!Number.isFinite(v)) return null;
-          return {
-            x: lab,
-            y: Math.min(1, v + 0.06),
-            text: fmt01(v),
-            showarrow: false,
-            font: { size: 13, color: '#111111' }
-          };
-        }).filter(Boolean)
+        shapes: [{
+          type: 'line',
+          xref: 'paper',
+          x0: 0,
+          x1: 1,
+          yref: 'y',
+          y0: threshold,
+          y1: threshold,
+          line: { color: '#5f6368', width: 2, dash: 'dash' }
+        }],
+        annotations: [...pointLabels, thresholdLabel]
       };
 
       Plotly.react('chart', [traceLine], layout, { responsive: true, displayModeBar: false });
@@ -732,109 +1137,122 @@
 
     function update() {
       const prior = readPrior();
+      const threshold = readThreshold();
       ids.priorValue.textContent = fmt01(prior);
       ids.priorCard.textContent = fmt01(prior);
+      ids.thresholdValue.textContent = fmt01(threshold);
+      ids.thresholdCard.textContent = fmt01(threshold);
 
       const steps = computeChain();
       renderTable(steps);
-      renderChart(steps);
+      renderIndependenceNotice();
+      refreshRowMeta();
+      renderPriorEvidence();
 
       const last = steps[steps.length - 1]?.p;
       ids.posteriorCard.textContent = Number.isFinite(last) ? fmt01(last) : '—';
+
+      // The chart comes last, and its failure must not take the numbers with
+      // it: Plotly is a CDN dependency and workshops run on hotel wi-fi.
+      try {
+        renderChart(steps, threshold);
+      } catch (err) {
+        console.error('Chart unavailable:', err);
+      }
+
+      if (!Number.isFinite(last)) {
+        ids.verdictCard.textContent = '—';
+        ids.verdictCard.className = 'big';
+      } else if (last >= threshold) {
+        ids.verdictCard.textContent = 'Commit';
+        ids.verdictCard.className = 'big verdictYes';
+      } else {
+        ids.verdictCard.textContent = 'Hold';
+        ids.verdictCard.className = 'big verdictNo';
+      }
     }
 
-    function setScenario({ prior, evidenceRows, label }) {
+    function setScenario({ prior, threshold, evidenceRows, label }) {
       setPrior(prior);
+      setThreshold(threshold ?? 0.5);
       hypothesisText.value = label ?? '';
       evidence = evidenceRows.map(r => ({
         signalId: r.signalId ?? '',
         customLabel: r.customLabel ?? '',
         observed: r.observed === 'neg' ? 'neg' : 'pos',
         sensitivity: clamp01(r.sensitivity),
-        specificity: clamp01(r.specificity)
+        falsePositive: clamp01(r.falsePositive)
       }));
       renderEvidence();
       update();
     }
 
-    function wirePriorSync() {
-      priorRange.addEventListener('input', () => {
-        const v = clamp01(Number(priorRange.value));
-        priorNumber.value = String(v);
+    // Keep each slider and its number box showing the same value.
+    function wireRangeSync(range, number) {
+      range.addEventListener('input', () => {
+        number.value = String(clamp01(Number(range.value)));
         update();
       });
-      priorNumber.addEventListener('input', () => {
-        const v = clamp01(Number(priorNumber.value));
-        priorRange.value = String(v);
-        priorNumber.value = String(v);
+      number.addEventListener('input', () => {
+        const v = clamp01(Number(number.value));
+        range.value = String(v);
+        number.value = String(v);
         update();
       });
     }
 
-    wirePriorSync();
+    wireRangeSync(priorRange, priorNumber);
+    wireRangeSync(thresholdRange, thresholdNumber);
 
     document.getElementById('addEvidence').addEventListener('click', () => {
-      evidence.push({ signalId: '', customLabel: '', observed: 'pos', sensitivity: 0.7, specificity: 0.7 });
+      // 0.5 / 0.5 is a likelihood ratio of exactly 1: a signal that tells you
+      // nothing. Every new test starts as a vanity metric and has to be argued up.
+      evidence.push({ signalId: '', customLabel: '', observed: 'pos', sensitivity: 0.5, falsePositive: 0.5 });
       renderEvidence();
       update();
     });
 
-    document.getElementById('reset').addEventListener('click', () => setScenario({
-      label: 'This investment yields intended benefits',
-      prior: 0.2,
-      evidenceRows: [
-        {
-          signalId: 'partner_paid',
-          observed: 'pos',
-          sensitivity: 0.75,
-          specificity: 0.9
-        },
-        {
-          signalId: 'timebox_ship',
-          observed: 'pos',
-          sensitivity: 0.8,
-          specificity: 0.8
-        }
-      ]
-    }));
+    const HYPOTHESIS = 'This investment yields intended benefits';
 
-    document.getElementById('scenarioLow').addEventListener('click', () => setScenario({
-      label: 'This investment yields intended benefits',
-      prior: 0.2,
-      evidenceRows: [
-        { signalId: 'repeat_usage', observed: 'pos', sensitivity: 0.55, specificity: 0.5 },
-        { signalId: 'invite_teammate', observed: 'pos', sensitivity: 0.55, specificity: 0.5 }
-      ]
-    }));
+    const PRESETS = {
+      default: {
+        label: HYPOTHESIS,
+        prior: 0.2,
+        threshold: 0.5,
+        evidenceRows: [
+          { signalId: 'partner_paid', observed: 'pos', sensitivity: 0.75, falsePositive: 0.1 },
+          { signalId: 'timebox_ship', observed: 'pos', sensitivity: 0.8, falsePositive: 0.2 }
+        ]
+      },
+      // Both rates close together: the signals feel encouraging but barely move
+      // the belief. This is the vanity-metric demonstration.
+      low: {
+        label: HYPOTHESIS,
+        prior: 0.2,
+        threshold: 0.5,
+        evidenceRows: [
+          { signalId: 'repeat_usage', observed: 'pos', sensitivity: 0.55, falsePositive: 0.5 },
+          { signalId: 'invite_teammate', observed: 'pos', sensitivity: 0.55, falsePositive: 0.5 }
+        ]
+      },
+      high: {
+        label: HYPOTHESIS,
+        prior: 0.2,
+        threshold: 0.5,
+        evidenceRows: [
+          { signalId: 'partner_paid', observed: 'pos', sensitivity: 0.8, falsePositive: 0.05 },
+          { signalId: 'timebox_ship', observed: 'pos', sensitivity: 0.85, falsePositive: 0.15 }
+        ]
+      }
+    };
 
-    document.getElementById('scenarioHigh').addEventListener('click', () => setScenario({
-      label: 'This investment yields intended benefits',
-      prior: 0.2,
-      evidenceRows: [
-        { signalId: 'partner_paid', observed: 'pos', sensitivity: 0.8, specificity: 0.95 },
-        { signalId: 'timebox_ship', observed: 'pos', sensitivity: 0.85, specificity: 0.85 }
-      ]
-    }));
+    document.getElementById('reset').addEventListener('click', () => setScenario(PRESETS.default));
+    document.getElementById('scenarioLow').addEventListener('click', () => setScenario(PRESETS.low));
+    document.getElementById('scenarioHigh').addEventListener('click', () => setScenario(PRESETS.high));
 
     // Initial
-    setScenario({
-      label: 'This investment yields intended benefits',
-      prior: 0.2,
-      evidenceRows: [
-        {
-          signalId: 'partner_paid',
-          observed: 'pos',
-          sensitivity: 0.75,
-          specificity: 0.9
-        },
-        {
-          signalId: 'timebox_ship',
-          observed: 'pos',
-          sensitivity: 0.8,
-          specificity: 0.8
-        }
-      ]
-    });
+    setScenario(PRESETS.default);
+    loadLibrary();
   </script>
 </body>
 </html>
