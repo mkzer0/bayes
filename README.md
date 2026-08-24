@@ -89,6 +89,15 @@ Displayed probabilities are rounded to two decimals. The inputs are judgement ca
 digits would only dress up a guess; values under `0.01` and over `0.99` are labelled rather
 than rounded to a misleading `0` or `1`.
 
+## Library of starting beliefs and signal strengths
+
+`data/library.json` holds selectable base rates and signal strengths, each tagged with its
+provenance: `published` (a named study with a sample size), `anchored` (judgement calibrated
+against a published interpretation scale), or `local` (a number only your organisation can
+supply). `docs/evidence.md` records the sourcing and, more importantly, where the evidence
+runs out — published base rates exist for priors, but no published table of
+`P(signal | success)` and `P(signal | failure)` exists for discovery signals.
+
 ## Repository structure
 
 ```text
@@ -96,7 +105,10 @@ than rounded to a misleading `0` or `1`.
 ├── index.html          # markup, styles, and the full update engine (vanilla JS + Plotly)
 ├── README.md
 ├── data/
+│   ├── library.json    # selectable priors and signal strengths, with provenance
 │   └── scenarios.json  # reference copy of the in-page presets
+├── docs/
+│   └── evidence.md     # sourcing for every number in the library
 └── scripts/
 ```
 
