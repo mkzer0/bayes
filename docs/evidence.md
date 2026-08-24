@@ -145,6 +145,34 @@ Three placements are deliberate teaching choices:
   early results. Any fake-door signal belongs near the bottom of the ordering above unless it
   is paired with a price and a real conversation.
 
+## How the library is presented, and why
+
+A library of numbers can quietly destroy the thing it was meant to support. If selecting a
+signal filled in its two rates, the team would stop answering the two questions — and those
+questions are the entire pedagogical payload. The reference numbers would become the answer
+instead of a check on the answer.
+
+So the interaction is built the other way round:
+
+- **Nothing auto-fills.** Choosing a signal or a reference class reveals evidence; it never
+  writes a value. Adopting is always a separate, explicit click.
+- **New signals start at `0.5 / 0.5`** — a likelihood ratio of exactly 1. Every test begins
+  worthless and has to be argued up, which is the correct default belief about a metric you
+  have not yet interrogated.
+- **Your estimate is shown against the library's**, both with their implied likelihood ratio
+  and band, rather than one replacing the other. Disagreement is the useful output.
+- **Provenance is always on screen.** An `anchored` badge next to a number, with the words
+  "this is a judgement calibrated against a published scale, not a measurement", does more
+  for calibration than any amount of extra precision would.
+- **Priors show their caveat before their number can be adopted.** The caveats are where the
+  reasoning lives: "survival is a low bar", "the study reports a value shortfall, not a
+  success rate".
+- **Every row shows its live band as the sliders move**, so the Jaeschke scale is learned by
+  repetition instead of being looked up once and forgotten.
+
+The `local` prior — your own portfolio's hit rate — deliberately offers no number and no
+adopt button. It tells you to go and count.
+
 ## Replacing these with your own numbers
 
 The tool gets meaningfully better once a team stops using the defaults:

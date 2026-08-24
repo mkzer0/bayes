@@ -98,6 +98,25 @@ supply). `docs/evidence.md` records the sourcing and, more importantly, where th
 runs out — published base rates exist for priors, but no published table of
 `P(signal | success)` and `P(signal | failure)` exists for discovery signals.
 
+### Estimate first, then compare
+
+A library of pre-set numbers is in tension with the point of the tool. If picking a signal
+filled in the two rates, nobody would ever answer the two questions — and answering them is
+the entire lesson. So the library never auto-fills:
+
+1. **You commit to your own numbers first.** New signals start at `0.5 / 0.5`, a likelihood
+   ratio of exactly 1 — a signal that tells you nothing. Every test begins as a vanity metric
+   and has to be argued up.
+2. **Then you open the comparison.** Your estimate and the library's sit side by side, each
+   with its implied weight of evidence and band. Adopting the library's values is a separate,
+   explicit click.
+3. **The gap is the teaching moment.** A room that rated a non-binding LOI at weight 4 and
+   finds the library at 1.9 has just had the argument worth having.
+
+Every row shows its live weight and band as the sliders move, so the interpretation scale is
+learned by repetition rather than looked up. The page works fine without the library — if the
+fetch fails, the comparison panels simply do not appear.
+
 ## Repository structure
 
 ```text

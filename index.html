@@ -129,6 +129,96 @@
     .verdictYes { color: var(--pos); }
     .verdictNo { color: var(--neg); }
 
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: var(--muted);
+      vertical-align: middle;
+    }
+
+    .badge.published { border-color: #bcd8c6; background: #f1f8f3; color: var(--pos); }
+    .badge.anchored { border-color: var(--warnLine); background: var(--warnBg); color: var(--warn); }
+    .badge.local { border-color: var(--line); background: var(--soft); color: var(--muted); }
+
+    .bandTag {
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .bandStrong { color: var(--pos); }
+    .bandModerate { color: var(--fg); }
+    .bandWeak { color: var(--muted); }
+    .bandNegligible { color: var(--neg); }
+
+    .libPanel {
+      grid-column: 1 / -1;
+      margin-top: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--soft);
+      font-size: 0.92rem;
+    }
+
+    .libPanel[hidden] { display: none; }
+
+    .compareGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 10px 0;
+    }
+
+    .compareCell {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .compareCell .who {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      font-weight: 800;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .libLink { color: var(--muted); font-size: 0.86rem; }
+
+    .rowMeta {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+    }
+
+    .rowMeta button {
+      border-radius: 999px;
+      padding: 6px 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--fg);
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+
+    .rowMeta button:hover { border-color: var(--fg); }
+
     .footnote {
       color: var(--muted);
       font-size: 0.9rem;
@@ -327,6 +417,13 @@
         <input id="priorNumber" type="number" min="0" max="1" step="0.01" value="0.20" inputmode="decimal" />
       </label>
 
+      <div id="priorLibraryWrap" hidden>
+        <label for="priorClass" style="margin-bottom: 6px;">Reference class (optional)</label>
+        <span class="hint">Argue your own number first. Then check it against a published base rate — the gap is worth a conversation.</span>
+        <select id="priorClass" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;"></select>
+        <div id="priorEvidence" class="libPanel" style="grid-column:auto;" hidden></div>
+      </div>
+
       <label for="thresholdRange">
         Step 2 — Decision threshold <span class="value mono" id="thresholdValue">0.5</span>
         <span class="hint">We commit if the belief ends up above this. Set it <strong>now</strong>, before you look at any evidence — deciding the bar afterwards is how a model becomes a rationalisation.</span>
@@ -339,7 +436,7 @@
       <div class="evidenceHeader">
         <div>
           <span class="title">Step 3 — Signals (tests)</span>
-          <span class="subtitle">Add tests that would actually change a decision</span>
+          <span class="subtitle">New signals start at 0.5 / 0.5 — worth nothing until you argue otherwise</span>
         </div>
         <div class="actions" style="margin:0;">
           <button id="addEvidence" class="secondary">Add evidence</button>
@@ -511,6 +608,91 @@
       return hit ? hit.group : '';
     }
 
+    // The library of published base rates and anchored signal strengths lives in
+    // data/library.json. It enriches the page but is never required: if the fetch
+    // fails the tool works exactly as it did before, minus the compare panels.
+    let LIBRARY = null;
+
+    function librarySignal(id) {
+      if (!LIBRARY) return null;
+      return LIBRARY.signals.find(s => s.id === id) ?? null;
+    }
+
+    // Bands come from Jaeschke et al. (1994). The epsilon matters: 0.7/0.07 is
+    // 9.999999999999998 in floating point, which would silently demote a strong
+    // signal to moderate.
+    function bandFor(lr) {
+      if (!LIBRARY || !Number.isFinite(lr)) return null;
+      for (const b of LIBRARY.signalStrengthBands.bands) {
+        if (lr >= b.min - 1e-9 && (b.max === null || lr < b.max - 1e-9)) return b;
+      }
+      return lr >= 1 ? null : { label: 'Against', meaning: 'This observation is evidence the bet is not working.' };
+    }
+
+    function bandTag(lr) {
+      const b = bandFor(lr);
+      if (!b) return '';
+      return `<span class="bandTag band${b.label}">${b.label}</span>`;
+    }
+
+    async function loadLibrary() {
+      try {
+        const res = await fetch('data/library.json');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        LIBRARY = await res.json();
+      } catch (err) {
+        console.warn('Library unavailable, continuing without it:', err);
+        return;
+      }
+      buildPriorPicker();
+      renderEvidence();
+      update();
+    }
+
+    function buildPriorPicker() {
+      const wrap = document.getElementById('priorLibraryWrap');
+      const sel = document.getElementById('priorClass');
+      sel.innerHTML = [
+        '<option value="">Compare with a published base rate…</option>',
+        ...LIBRARY.priors.map(p => `<option value="${p.id}">${p.name}</option>`)
+      ].join('');
+      wrap.hidden = false;
+      sel.addEventListener('change', renderPriorEvidence);
+    }
+
+    function renderPriorEvidence() {
+      if (!LIBRARY) return;
+      const sel = document.getElementById('priorClass');
+      const panel = document.getElementById('priorEvidence');
+      const p = LIBRARY.priors.find(x => x.id === sel.value);
+      if (!p) {
+        panel.hidden = true;
+        panel.innerHTML = '';
+        return;
+      }
+      const sources = p.sources.map(u => `<a class="libLink" href="${u}" target="_blank" rel="noopener">source</a>`).join(' · ');
+      const yours = fmt01(readPrior());
+      const adopt = p.value === null
+        ? `<p class="hint" style="margin:8px 0 0;">No published number applies here — this one you have to count yourself.</p>`
+        : `<div class="rowMeta" style="grid-column:auto;">
+             <span>Published: <strong class="mono">${fmt01(p.value)}</strong> · yours: <strong class="mono">${yours}</strong></span>
+             <button type="button" data-action="adoptPrior" data-value="${p.value}">Adopt ${fmt01(p.value)}</button>
+           </div>`;
+      panel.hidden = false;
+      panel.innerHTML = `
+        <div><span class="badge ${p.provenance}">${p.provenance}</span> <strong>${p.name}</strong></div>
+        <p style="margin:8px 0 6px;">${p.basis}</p>
+        <p class="hint" style="margin:0;"><strong>Caveat.</strong> ${p.caveat} ${sources}</p>
+        ${adopt}
+      `;
+      const btn = panel.querySelector('button[data-action="adoptPrior"]');
+      if (btn) btn.addEventListener('click', () => {
+        setPrior(Number(btn.dataset.value));
+        update();
+        renderPriorEvidence();
+      });
+    }
+
     let evidence = [];
 
     function setPrior(p) {
@@ -619,7 +801,21 @@
       actions.className = 'rowActions';
       actions.innerHTML = `<button data-action="remove" type="button">Remove</button>`;
 
-      row.append(labelField, observedField, pEgHField, pEgNotHField, actions);
+      // Live strength readout plus the library comparison. The comparison is
+      // opt-in and never auto-fills: the team commits to its own estimate
+      // first, and the gap between the two is the part worth discussing.
+      const meta = document.createElement('div');
+      meta.className = 'rowMeta';
+      meta.innerHTML = `
+        <span>Weight of evidence: <strong class="mono" data-role="rowLR">—</strong> <span data-role="rowBand"></span></span>
+        <button type="button" data-action="compare" hidden>Compare with the library</button>
+      `;
+
+      const libPanel = document.createElement('div');
+      libPanel.className = 'libPanel';
+      libPanel.hidden = true;
+
+      row.append(labelField, observedField, pEgHField, pEgNotHField, actions, meta, libPanel);
 
       function updateRowFromInputs(t) {
         if (!(t instanceof HTMLElement)) return;
@@ -678,17 +874,79 @@
         update();
       });
 
+      // Own estimate on the left, library on the right, never merged silently.
+      function renderCompare() {
+        const i = Number(row.dataset.index);
+        const e2 = evidence[i];
+        const lib = e2 ? librarySignal(e2.signalId) : null;
+        if (!lib) return;
+        const ourLR = e2.falsePositive > 0 ? e2.sensitivity / e2.falsePositive : Number.POSITIVE_INFINITY;
+        const same = e2.sensitivity === lib.sensitivity && e2.falsePositive === lib.falsePositive;
+        libPanel.hidden = false;
+        libPanel.innerHTML = `
+          <div class="compareGrid">
+            <div class="compareCell">
+              <div class="who">Your estimate</div>
+              <div class="mono">${fmt01(e2.sensitivity)} if it works · ${fmt01(e2.falsePositive)} anyway</div>
+              <div style="margin-top:4px;">Weight <strong class="mono">${fmtLR(ourLR)}</strong> ${bandTag(ourLR)}</div>
+            </div>
+            <div class="compareCell">
+              <div class="who">Library <span class="badge ${lib.provenance}">${lib.provenance}</span></div>
+              <div class="mono">${fmt01(lib.sensitivity)} if it works · ${fmt01(lib.falsePositive)} anyway</div>
+              <div style="margin-top:4px;">Weight <strong class="mono">${fmtLR(lib.impliedLR)}</strong> ${bandTag(lib.impliedLR)}</div>
+            </div>
+          </div>
+          <p style="margin:0 0 8px;">${lib.rationale}</p>
+          <p class="hint" style="margin:0;">
+            This is a judgement calibrated against a published scale, not a measurement. If you can defend
+            your own number, keep it — and write down why.
+          </p>
+          <div class="rowMeta">
+            <button type="button" data-action="adoptSignal" ${same ? 'disabled' : ''}>${same ? 'Same as yours' : 'Adopt the library values'}</button>
+            <button type="button" data-action="hideCompare">Hide</button>
+          </div>
+        `;
+      }
+
       row.addEventListener('click', (ev) => {
         const t = ev.target;
         if (!(t instanceof HTMLElement)) return;
+        const i = Number(row.dataset.index);
+        if (!Number.isFinite(i)) return;
+
         if (t.dataset.action === 'remove') {
-          const i = Number(row.dataset.index);
-          if (!Number.isFinite(i)) return;
           evidence.splice(i, 1);
+          renderEvidence();
+          update();
+        } else if (t.dataset.action === 'compare') {
+          renderCompare();
+        } else if (t.dataset.action === 'hideCompare') {
+          libPanel.hidden = true;
+        } else if (t.dataset.action === 'adoptSignal') {
+          const lib = librarySignal(evidence[i].signalId);
+          if (!lib) return;
+          evidence[i].sensitivity = lib.sensitivity;
+          evidence[i].falsePositive = lib.falsePositive;
           renderEvidence();
           update();
         }
       });
+
+      // Reflect the row's own strength as the sliders move, so the Jaeschke
+      // bands are learned by repetition rather than looked up.
+      row.refreshMeta = () => {
+        const i = Number(row.dataset.index);
+        const e2 = evidence[i];
+        if (!e2) return;
+        const lr = e2.falsePositive > 0 ? e2.sensitivity / e2.falsePositive : Number.POSITIVE_INFINITY;
+        const lrEl = meta.querySelector('[data-role="rowLR"]');
+        const bandEl = meta.querySelector('[data-role="rowBand"]');
+        const cmpBtn = meta.querySelector('button[data-action="compare"]');
+        if (lrEl) lrEl.textContent = fmtLR(lr);
+        if (bandEl) bandEl.innerHTML = bandTag(lr);
+        if (cmpBtn) cmpBtn.hidden = !librarySignal(e2.signalId);
+        if (!libPanel.hidden) renderCompare();
+      };
 
       return row;
     }
@@ -696,6 +954,13 @@
     function renderEvidence() {
       evidenceList.innerHTML = '';
       evidence.forEach((e, i) => evidenceList.appendChild(makeEvidenceRow(e, i)));
+      refreshRowMeta();
+    }
+
+    function refreshRowMeta() {
+      for (const row of evidenceList.children) {
+        if (typeof row.refreshMeta === 'function') row.refreshMeta();
+      }
     }
 
     // Chaining updates assumes each test is independent evidence given the
@@ -779,7 +1044,8 @@
         if (i !== 0) observed = s.observed === 'neg' ? 'Didn’t see it' : 'Saw it';
         const sens = Number.isFinite(s.sensitivity) ? fmt01(s.sensitivity) : '—';
         const fp = Number.isFinite(s.falsePositive) ? fmt01(s.falsePositive) : '—';
-        const lr = i === 0 ? '—' : fmtLR(likelihoodRatio(s.pEgH, s.pEgNotH));
+        const lrValue = i === 0 ? Number.NaN : likelihoodRatio(s.pEgH, s.pEgNotH);
+        const lr = i === 0 ? '—' : `${fmtLR(lrValue)} ${bandTag(lrValue)}`;
         tr.innerHTML = `
           <td><span class="mono">${s.step}</span> ${i === 0 ? '' : `<span style="color:var(--muted);font-size:0.9rem">(${s.label.replaceAll('<', '&lt;')})</span>`}</td>
           <td>${observed}</td>
@@ -880,6 +1146,8 @@
       const steps = computeChain();
       renderTable(steps);
       renderIndependenceNotice();
+      refreshRowMeta();
+      renderPriorEvidence();
 
       const last = steps[steps.length - 1]?.p;
       ids.posteriorCard.textContent = Number.isFinite(last) ? fmt01(last) : '—';
@@ -937,7 +1205,9 @@
     wireRangeSync(thresholdRange, thresholdNumber);
 
     document.getElementById('addEvidence').addEventListener('click', () => {
-      evidence.push({ signalId: '', customLabel: '', observed: 'pos', sensitivity: 0.7, falsePositive: 0.3 });
+      // 0.5 / 0.5 is a likelihood ratio of exactly 1: a signal that tells you
+      // nothing. Every new test starts as a vanity metric and has to be argued up.
+      evidence.push({ signalId: '', customLabel: '', observed: 'pos', sensitivity: 0.5, falsePositive: 0.5 });
       renderEvidence();
       update();
     });
@@ -982,6 +1252,7 @@
 
     // Initial
     setScenario(PRESETS.default);
+    loadLibrary();
   </script>
 </body>
 </html>
